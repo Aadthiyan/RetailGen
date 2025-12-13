@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    // Disable ESLint at build time to avoid version conflicts
+    eslint: {
+        // Disable ESLint during build - we'll use separate lint script
+        ignoreDuringBuilds: true,
+    },
+
     // Image optimization
     images: {
         domains: ['res.cloudinary.com', 'replicate.delivery', 'pbxt.replicate.delivery'],
