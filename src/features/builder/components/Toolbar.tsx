@@ -35,9 +35,9 @@ export function Toolbar() {
         addObject(rect);
     };
 
-    const addCfabricModule = await import('fabric');
-        const Circle = fabricModule.fabric.Circle
-        const { Circle } = await import('fabric');
+    const addCircle = async () => {
+        const fabricModule = await import('fabric');
+        const Circle = fabricModule.fabric.Circle;
 
         const circle = new Circle({
             left: 100,
