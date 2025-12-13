@@ -82,8 +82,7 @@ export function CompliancePanel() {
                         creativeId: creativeId as any,
                         status: data.data.report.overallStatus,
                         score: data.data.report.score,
-                        results: data.data.report.results,
-                        summary: data.data.report.summary,
+                        violations: data.data.report.violations || [],
                     });
 
                     await logAudit({
