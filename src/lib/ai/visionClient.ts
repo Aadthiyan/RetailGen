@@ -57,13 +57,16 @@ export async function extractTextTesseract(imageUrl: string): Promise<TextExtrac
         const { data } = await worker.recognize(imageUrl);
         await worker.terminate();
 
+        // Extract words from the result data
+        const blocks = (data as any).words?.map((w: any) => ({
+            text: w.text,
+            boundingBox: w.bbox,
+        })) || [];
+
         return {
             text: data.text,
-            confidence: data.confidence / 100,
-            blocks: data.words.map((w: any) => ({
-                text: w.text,
-                boundingBox: w.bbox,
-            })),
+            confidence: (data.confidence as number) / 100,
+            blocks,
         };
     } catch (error) {
         console.error('Tesseract Error:', error);
