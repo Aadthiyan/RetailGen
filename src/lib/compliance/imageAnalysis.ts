@@ -1,4 +1,4 @@
-import { analyzeImageWithVision, extractTextWithOCR } from '../ai/visionClient';
+import { extractTextGoogle } from '../ai/visionClient';
 
 export interface ImageAnalysisResult {
     text: {
@@ -75,13 +75,17 @@ export async function analyzeCreativeImage(
 
     try {
         // Use Google Vision API for comprehensive analysis
-        const visionResult = await analyzeImageWithVision(imageUrl);
+        const textResult = await extractTextGoogle(imageUrl);
 
         const result: ImageAnalysisResult = {
             text: {
-                fullText: '',
-                blocks: [],
-                confidence: 0,
+                fullText: textResult.text,
+                blocks: textResult.blocks.map(b => ({
+                    text: b.text,
+                    confidence: textResult.confidence,
+                    boundingBox: b.boundingBox || { top: 0, left: 0, width: 0, height: 0 },
+                })),
+                confidence: textResult.confidence,
             },
             objects: [],
             colors: [],
@@ -91,13 +95,16 @@ export async function analyzeCreativeImage(
             labels: [],
         };
 
-        // Extract text
-        if (extractText && visionResult.textAnnotations) {
-            const fullText = visionResult.textAnnotations[0]?.description || '';
-            result.text.fullText = fullText;
-
-            // Process text blocks
-            result.text.blocks = visionResult.textAnnotations.slice(1).map((annotation: any) => ({
+        // Extract text is already done above
+        if (!extractText) {
+            result.text = {
+                fullText: '',
+                blocks: [],
+                confidence: 0,
+            };
+        } else if (textResult.blocks.length > 0) {
+            // Process text blocks from extraction
+            result.text.blocks = textResult.blocks.map((block: any) => ({
                 text: annotation.description,
                 confidence: 0.9, // Vision API doesn't provide per-word confidence
                 boundingBox: convertVertices(annotation.boundingPoly?.vertices),
