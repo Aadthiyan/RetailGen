@@ -1,4 +1,4 @@
-import { extractTextGoogle } from '../ai/visionClient';
+import { extractTextGoogle, extractTextTesseract } from '../ai/visionClient';
 
 export interface ImageAnalysisResult {
     text: {
@@ -105,47 +105,29 @@ export async function analyzeCreativeImage(
         } else if (textResult.blocks.length > 0) {
             // Process text blocks from extraction
             result.text.blocks = textResult.blocks.map((block: any) => ({
-                text: annotation.description,
+                text: block.text,
                 confidence: 0.9, // Vision API doesn't provide per-word confidence
-                boundingBox: convertVertices(annotation.boundingPoly?.vertices),
+                boundingBox: block.boundingBox,
             }));
 
             result.text.confidence = result.text.blocks.length > 0 ? 0.9 : 0;
         }
 
         // Detect logos
-        if (detectLogos && visionResult.logoAnnotations) {
-            result.logos = visionResult.logoAnnotations.map((logo: any) => ({
-                description: logo.description,
-                confidence: logo.score || 0.8,
-                boundingBox: convertVertices(logo.boundingPoly?.vertices),
-                size: calculateSize(logo.boundingPoly?.vertices),
-            }));
-        }
+        // Note: Logo detection would require additional Google Vision API calls
+        // Currently only text extraction is implemented
 
         // Analyze colors
-        if (analyzeColors && visionResult.imagePropertiesAnnotation) {
-            const dominantColors = visionResult.imagePropertiesAnnotation.dominantColors?.colors || [];
-            result.colors = dominantColors.map((colorInfo: any) => ({
-                color: rgbToHex(colorInfo.color),
-                pixelFraction: colorInfo.pixelFraction || 0,
-                score: colorInfo.score || 0,
-            }));
-        }
+        // Note: Color analysis would require additional Google Vision API calls
+        // Currently only text extraction is implemented
 
         // Detect objects
-        if (detectObjects && visionResult.localizedObjectAnnotations) {
-            result.objects = visionResult.localizedObjectAnnotations.map((obj: any) => ({
-                name: obj.name,
-                confidence: obj.score || 0.8,
-                boundingBox: convertNormalizedVertices(obj.boundingPoly?.normalizedVertices),
-            }));
-        }
+        // Note: Object detection would require additional Google Vision API calls
+        // Currently only text extraction is implemented
 
         // Extract labels
-        if (visionResult.labelAnnotations) {
-            result.labels = visionResult.labelAnnotations.map((label: any) => label.description);
-        }
+        // Note: Label detection would require additional Google Vision API calls
+        // Currently only text extraction is implemented
 
         return result;
     } catch (error) {
@@ -159,17 +141,12 @@ export async function analyzeCreativeImage(
  */
 export async function extractTextClientSide(imageDataUrl: string): Promise<TextBlock[]> {
     try {
-        const result = await extractTextWithOCR(imageDataUrl);
+        const result = await extractTextTesseract(imageDataUrl);
 
-        return result.words.map((word: any) => ({
-            text: word.text,
-            confidence: word.confidence / 100,
-            boundingBox: {
-                x: word.bbox.x0,
-                y: word.bbox.y0,
-                width: word.bbox.x1 - word.bbox.x0,
-                height: word.bbox.y1 - word.bbox.y0,
-            },
+        return result.blocks.map((block: any) => ({
+            text: block.text,
+            confidence: result.confidence,
+            boundingBox: block.boundingBox || { x: 0, y: 0, width: 0, height: 0 },
         }));
     } catch (error) {
         console.error('Client-side OCR error:', error);

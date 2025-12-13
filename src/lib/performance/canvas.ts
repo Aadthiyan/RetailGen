@@ -94,17 +94,21 @@ export async function lazyLoadCanvasObjects(
         const batch = objects.slice(i, i + BATCH_SIZE);
 
         await new Promise<void>((resolve) => {
-            fabric.util.enlivenObjects(batch, (enlivenedObjects: any[]) => {
-                canvas.renderOnAddRemove = false;
-                enlivenedObjects.forEach(obj => canvas.add(obj));
-                canvas.renderOnAddRemove = true;
+            // Use enlivenObjects with callback
+            (fabric.util.enlivenObjects as any)(
+                batch,
+                (enlivenedObjects: any[]) => {
+                    canvas.renderOnAddRemove = false;
+                    enlivenedObjects.forEach(obj => canvas.add(obj));
+                    canvas.renderOnAddRemove = true;
 
-                if (i + BATCH_SIZE >= objects.length) {
-                    canvas.requestRenderAll();
+                    if (i + BATCH_SIZE >= objects.length) {
+                        canvas.requestRenderAll();
+                    }
+
+                    resolve();
                 }
-
-                resolve();
-            });
+            );
         });
 
         // Allow UI to update between batches

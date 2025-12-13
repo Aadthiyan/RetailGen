@@ -1,10 +1,10 @@
 'use client';
 
 import { PreviewModal } from '@/features/builder/components/PreviewModal';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function PreviewPage() {
+function PreviewPageContent() {
     const searchParams = useSearchParams();
     const creativeId = searchParams.get('id');
     const [isOpen, setIsOpen] = useState(true);
@@ -32,5 +32,13 @@ export default function PreviewPage() {
                 onClose={() => setIsOpen(false)}
             />
         </div>
+    );
+}
+
+export default function PreviewPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <PreviewPageContent />
+        </Suspense>
     );
 }

@@ -305,7 +305,7 @@ export class ComplianceValidator {
     /**
      * Generate compliance report
      */
-    private generateReport(results: ValidationResult[], creativeId?: string): ComplianceReport {
+    protected generateReport(results: ValidationResult[], creativeId?: string): ComplianceReport {
         const passed = results.filter(r => r.passed).length;
         const failed = results.filter(r => !r.passed && r.severity === 'error').length;
         const warnings = results.filter(r => !r.passed && r.severity === 'warning').length;

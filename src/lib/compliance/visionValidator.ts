@@ -135,7 +135,7 @@ export class VisionEnhancedValidator extends ComplianceValidator {
             imageAnalysis.text.fullText.toLowerCase().includes('*');
 
         // Check for minimum text sizes
-        const smallText = textBlocks.filter(block => block.boundingBox.height < 20); // Rough threshold
+        const smallText = textBlocks.filter((block: any) => block.boundingBox.height < 20); // Rough threshold
 
         return {
             ruleId: 'vision-text-analysis',
@@ -179,42 +179,16 @@ export class VisionEnhancedValidator extends ComplianceValidator {
                 ? `Using ${colorCount} colors (within recommended range)`
                 : `Using ${colorCount} colors. Consider simplifying palette`,
             details: {
-                dominantColors: dominantColors.map(c => c.color),
+                dominantColors: dominantColors.map((c: any) => c.color),
                 totalColors: colorCount,
             },
         };
     }
 
     /**
-     * Generate enhanced report
+     * Create validator instance with vision support
      */
-    private generateReport(results: ValidationResult[], creativeId?: string): ComplianceReport {
-        const passed = results.filter(r => r.passed).length;
-        const failed = results.filter(r => !r.passed && r.severity === 'error').length;
-        const warnings = results.filter(r => !r.passed && r.severity === 'warning').length;
-
-        const score = Math.round((passed / results.length) * 100);
-        const overallStatus = failed > 0 ? 'fail' : warnings > 0 ? 'warning' : 'pass';
-
-        return {
-            creativeId: creativeId || 'unknown',
-            timestamp: Date.now(),
-            overallStatus,
-            score,
-            results,
-            summary: {
-                total: results.length,
-                passed,
-                failed,
-                warnings,
-            },
-        };
-    }
 }
-
-/**
- * Create validator instance with vision support
- */
 export function createVisionValidator(rules: ComplianceRule[]): VisionEnhancedValidator {
     return new VisionEnhancedValidator(rules);
 }
