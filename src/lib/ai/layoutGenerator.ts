@@ -59,7 +59,7 @@ export async function generateLayoutVariations(
  * Build optimized prompt for layout generation
  */
 function buildLayoutPrompt(params: LayoutGenerationParams): string {
-    const { productName, brandColors, style, format, additionalContext } = params;
+    const { productName, brandColors, style = 'modern', format, additionalContext } = params;
 
     const styleDescriptors = {
         modern: 'clean, contemporary, sleek design with bold typography',
@@ -77,7 +77,7 @@ function buildLayoutPrompt(params: LayoutGenerationParams): string {
 
     const prompt = `
 Professional advertising layout for ${productName}.
-${styleDescriptors[style]}.
+${styleDescriptors[style as keyof typeof styleDescriptors]}.
 ${colorInstruction}.
 ${formatContext}
 ${additionalContext || ''}
