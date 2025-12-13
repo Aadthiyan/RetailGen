@@ -59,7 +59,8 @@ export function CopyGenerationPanel() {
     const handleAddToCanvas = async (copyText: string) => {
         if (!canvas) return;
 
-        const { IText } = await import('fabric');
+        const fabricModule = await import('fabric');
+        const IText = fabricModule.fabric.IText;
 
         const fontSize = copyType === 'headline' ? 48 : copyType === 'tagline' ? 32 : 24;
 

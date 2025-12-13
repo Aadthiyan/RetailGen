@@ -63,7 +63,8 @@ export function GenerationPanel({ creativeId }: GenerationPanelProps) {
         if (!canvas) return;
 
         try {
-            const { Image } = await import('fabric');
+            const fabricModule = await import('fabric');
+            const Image = fabricModule.fabric.Image;
 
             // Load the generated image onto the canvas
             Image.fromURL(result.imageUrl, (img: any) => {

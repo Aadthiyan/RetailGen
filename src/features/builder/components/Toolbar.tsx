@@ -8,7 +8,8 @@ export function Toolbar() {
     const { addObject, canvas } = useBuilderStore();
 
     const addText = async () => {
-        const { IText } = await import('fabric');
+        const fabricModule = await import('fabric');
+        const IText = fabricModule.fabric.IText;
 
         const text = new IText('Double click to edit', {
             left: 100,
@@ -21,7 +22,8 @@ export function Toolbar() {
     };
 
     const addRectangle = async () => {
-        const { Rect } = await import('fabric');
+        const fabricModule = await import('fabric');
+        const Rect = fabricModule.fabric.Rect;
 
         const rect = new Rect({
             left: 100,
@@ -33,7 +35,8 @@ export function Toolbar() {
         addObject(rect);
     };
 
-    const addCircle = async () => {
+    const addCfabricModule = await import('fabric');
+        const Circle = fabricModule.fabric.Circle
         const { Circle } = await import('fabric');
 
         const circle = new Circle({
