@@ -23,9 +23,9 @@ export function CanvasEditor({ className }: CanvasEditorProps) {
         const initCanvas = async () => {
             try {
                 console.log("🎨 Initializing Fabric.js...");
-                const fabric = await import('fabric');
-                const Canvas = fabric.Canvas;
-                const Rect = fabric.Rect;
+                const fabricModule = await import('fabric');
+                const Canvas = fabricModule.fabric.Canvas;
+                const Rect = fabricModule.fabric.Rect;
 
                 if (!Canvas) {
                     console.error("❌ Fabric.js Canvas not found!");
