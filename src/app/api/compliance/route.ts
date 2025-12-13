@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TESCO_RULES } from '@/lib/compliance/rules';
 import { createVisionValidator } from '@/lib/compliance/visionValidator';
 import { successResponse, errorResponse } from '@/lib/api-response';
+import { ApiError } from '@/lib/api-error';
 
 export async function POST(req: NextRequest) {
     try {
@@ -9,7 +10,7 @@ export async function POST(req: NextRequest) {
         const { canvasJSON, imageUrl, retailer, metadata } = body;
 
         if (!canvasJSON) {
-            return errorResponse('Missing required field: canvasJSON', 400);
+            return errorResponse(ApiError.badRequest('Missing required field: canvasJSON'));
         }
 
         // Get rules for retailer (default to Tesco)
@@ -36,6 +37,10 @@ export async function POST(req: NextRequest) {
         });
     } catch (error: any) {
         console.error('Compliance validation error:', error);
-        return errorResponse(error.message || 'Failed to validate compliance', 500);
+        return errorResponse(
+            error instanceof Error
+                ? ApiError.internal(error.message)
+                : ApiError.internal('Failed to validate compliance')
+        );
     }
 }

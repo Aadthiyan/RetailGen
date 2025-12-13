@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateRecommendations } from '@/lib/ai/recommendationEngine';
 import { successResponse, errorResponse } from '@/lib/api-response';
+import { ApiError } from '@/lib/api-error';
 
 export async function POST(req: NextRequest) {
     try {
@@ -9,7 +10,7 @@ export async function POST(req: NextRequest) {
 
         // Validate required fields
         if (!canvasJSON || !format) {
-            return errorResponse('Missing required fields: canvasJSON and format', 400);
+            return errorResponse(ApiError.badRequest('Missing required fields: canvasJSON and format'));
         }
 
         // Generate recommendations
@@ -25,6 +26,10 @@ export async function POST(req: NextRequest) {
         });
     } catch (error: any) {
         console.error('Recommendation error:', error);
-        return errorResponse(error.message || 'Failed to generate recommendations', 500);
+        return errorResponse(
+            error instanceof Error
+                ? ApiError.internal(error.message)
+                : ApiError.internal('Failed to generate recommendations')
+        );
     }
 }

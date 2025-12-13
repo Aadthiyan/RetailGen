@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateComplianceReport, generateCertificate } from '@/lib/compliance/reporting';
 import { successResponse, errorResponse } from '@/lib/api-response';
+import { ApiError } from '@/lib/api-error';
 
 export async function POST(req: NextRequest) {
     try {
@@ -8,7 +9,7 @@ export async function POST(req: NextRequest) {
         const { report, creativeName, creativeId, action } = body;
 
         if (!report) {
-            return errorResponse('Missing required field: report', 400);
+            return errorResponse(ApiError.badRequest('Missing required field: report'));
         }
 
         if (action === 'certify') {
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
                 const certificate = generateCertificate(report, creativeId, creativeName);
                 return successResponse({ certificate });
             } catch (error: any) {
-                return errorResponse(error.message, 400);
+                return errorResponse(ApiError.badRequest(error.message));
             }
         } else {
             // Generate report (default)
@@ -34,6 +35,10 @@ export async function POST(req: NextRequest) {
         }
     } catch (error: any) {
         console.error('Reporting error:', error);
-        return errorResponse(error.message || 'Failed to generate report', 500);
+        return errorResponse(
+            error instanceof Error
+                ? ApiError.internal(error.message)
+                : ApiError.internal('Failed to generate report')
+        );
     }
 }

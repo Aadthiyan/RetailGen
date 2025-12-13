@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAdCopy, refineCopy } from '@/lib/ai/copyGenerator';
 import { successResponse, errorResponse } from '@/lib/api-response';
+import { ApiError } from '@/lib/api-error';
 
 export async function POST(req: NextRequest) {
     try {
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
 
         // Validate required fields for generation
         if (!productName || !copyType) {
-            return errorResponse('Missing required fields: productName and copyType', 400);
+            return errorResponse(ApiError.badRequest('Missing required fields: productName and copyType'));
         }
 
         // Generate copy
@@ -56,6 +57,10 @@ export async function POST(req: NextRequest) {
         });
     } catch (error: any) {
         console.error('Copy generation error:', error);
-        return errorResponse(error.message || 'Failed to generate copy', 500);
+        return errorResponse(
+            error instanceof Error
+                ? ApiError.internal(error.message)
+                : ApiError.internal('Failed to generate copy')
+        );
     }
 }

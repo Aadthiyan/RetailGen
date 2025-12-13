@@ -7,6 +7,7 @@ import {
     analyzeLayoutCompliance,
 } from '@/lib/compliance/imageAnalysis';
 import { successResponse, errorResponse } from '@/lib/api-response';
+import { ApiError } from '@/lib/api-error';
 
 export async function POST(req: NextRequest) {
     try {
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
         const { imageUrl, analysisType, options } = body;
 
         if (!imageUrl) {
-            return errorResponse('Missing required field: imageUrl', 400);
+            return errorResponse(ApiError.badRequest('Missing required field: imageUrl'));
         }
 
         let result;

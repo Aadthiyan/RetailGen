@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateComplianceGuidance, generateBatchGuidance } from '@/lib/compliance/copilot';
 import { successResponse, errorResponse } from '@/lib/api-response';
+import { ApiError } from '@/lib/api-error';
 
 export async function POST(req: NextRequest) {
     try {
@@ -16,10 +17,14 @@ export async function POST(req: NextRequest) {
             const guidance = await generateComplianceGuidance(violation, retailer);
             return successResponse({ guidance });
         } else {
-            return errorResponse('Missing required field: violation or violations', 400);
+            return errorResponse(ApiError.badRequest('Missing required field: violation or violations'));
         }
     } catch (error: any) {
         console.error('Copilot API error:', error);
-        return errorResponse(error.message || 'Failed to generate guidance', 500);
+        return errorResponse(
+            error instanceof Error
+                ? ApiError.internal(error.message)
+                : ApiError.internal('Failed to generate guidance')
+        );
     }
 }
