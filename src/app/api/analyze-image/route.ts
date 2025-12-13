@@ -54,6 +54,10 @@ export async function POST(req: NextRequest) {
         });
     } catch (error: any) {
         console.error('Image analysis error:', error);
-        return errorResponse(error.message || 'Failed to analyze image', 500);
+        return errorResponse(
+            error instanceof Error
+                ? ApiError.internal(error.message)
+                : ApiError.internal('Failed to analyze image')
+        );
     }
 }
