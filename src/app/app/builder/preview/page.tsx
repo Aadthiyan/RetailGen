@@ -29,8 +29,7 @@ export default function PreviewPage() {
         <div className="min-h-screen bg-gray-50">
             <PreviewModal 
                 isOpen={isOpen}
-                onOpenChange={setIsOpen}
-                creativeId={creativeId}
+                onClose={() => setIsOpen(false)}
             />
         </div>
     );
