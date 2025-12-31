@@ -1,4 +1,19 @@
-import { generateImage } from './replicateClient';
+// Switch between AI providers based on environment variable
+// Set AI_PROVIDER=openai in .env.local to use OpenAI (requires billing)
+// Default is pollinations (free, no API key needed)
+const AI_PROVIDER = process.env.AI_PROVIDER || 'pollinations';
+
+// Dynamic import based on provider
+const getImageGenerator = async () => {
+    if (AI_PROVIDER === 'openai') {
+        const { generateImage } = await import('./openaiClient');
+        return generateImage;
+    } else {
+        const { generateImage } = await import('./pollinationsClient');
+        return generateImage;
+    }
+};
+
 
 interface LayoutGenerationParams {
     productName: string;
@@ -30,6 +45,9 @@ export async function generateLayoutVariations(
     const basePrompt = buildLayoutPrompt(params);
 
     const results: GeneratedLayout[] = [];
+
+    // Get the appropriate image generator
+    const generateImage = await getImageGenerator();
 
     // Generate multiple variations
     for (let i = 0; i < count; i++) {

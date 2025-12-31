@@ -14,7 +14,20 @@ const CanvasEditor = dynamic(
         )
     }
 );
-import { Toolbar } from '@/features/builder/components/Toolbar';
+
+const Toolbar = dynamic(
+    () => import('@/features/builder/components/Toolbar').then(mod => ({ default: mod.Toolbar })),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="w-16 bg-white border-r border-gray-200">
+                <div className="p-2">
+                    <div className="animate-pulse bg-gray-200 h-12 w-12 rounded-lg"></div>
+                </div>
+            </div>
+        )
+    }
+);
 import { LayerList } from '@/features/builder/components/LayerList';
 import { PropertiesPanel } from '@/features/builder/components/PropertiesPanel';
 import { FormatSelector } from '@/features/builder/components/FormatSelector';
@@ -23,6 +36,7 @@ import { CopyGenerationPanel } from '@/features/builder/components/CopyGeneratio
 import { RecommendationsPanel } from '@/features/builder/components/RecommendationsPanel';
 import { CompliancePanel } from '@/features/builder/components/CompliancePanel';
 import { ExportPanel } from '@/features/builder/components/ExportPanel';
+import { TemplateGallery } from '@/features/builder/components/TemplateGallery';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
@@ -40,6 +54,7 @@ function BuilderPageContent() {
     const [showAIPanel, setShowAIPanel] = useState(false);
     const [showCompliancePanel, setShowCompliancePanel] = useState(false);
     const [showExportPanel, setShowExportPanel] = useState(false);
+    const [showTemplates, setShowTemplates] = useState(false);
     const [activeAIPanel, setActiveAIPanel] = useState<'layout' | 'copy' | 'recommendations'>('layout');
 
     const creative = useQuery(api.creatives.get, creativeId ? { id: creativeId as Id<"creatives"> } : "skip");
@@ -96,6 +111,17 @@ function BuilderPageContent() {
             <div className="flex flex-1 overflow-hidden">
                 {/* Left Sidebar */}
                 <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+                    {/* Templates Button */}
+                    <div className="p-4 border-b border-gray-200">
+                        <button
+                            onClick={() => setShowTemplates(true)}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:opacity-90 transition-opacity shadow-md"
+                        >
+                            <Sparkles className="w-4 h-4" />
+                            <span className="font-semibold">Browse Templates</span>
+                        </button>
+                    </div>
+
                     <div className="p-4">
                         <FormatSelector />
                     </div>
@@ -105,9 +131,11 @@ function BuilderPageContent() {
                 </div>
 
                 {/* Center Canvas */}
-                <div className="flex-1 flex flex-col overflow-hidden">
-                    <Toolbar />
-                    <CanvasEditor />
+                <div className="flex-1 flex flex-row overflow-hidden">
+                    <Toolbar onExportClick={toggleExportPanel} />
+                    <div className="flex-1 flex items-center justify-center overflow-hidden">
+                        <CanvasEditor className="w-full h-full" />
+                    </div>
                 </div>
 
                 {/* Right Sidebar */}
@@ -159,33 +187,30 @@ function BuilderPageContent() {
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => setActiveAIPanel('layout')}
-                                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
-                                            activeAIPanel === 'layout'
-                                                ? 'bg-purple-100 text-purple-700'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
+                                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${activeAIPanel === 'layout'
+                                            ? 'bg-purple-100 text-purple-700'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                            }`}
                                     >
                                         <ImageIcon className="w-3.5 h-3.5" />
                                         Layout
                                     </button>
                                     <button
                                         onClick={() => setActiveAIPanel('copy')}
-                                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
-                                            activeAIPanel === 'copy'
-                                                ? 'bg-purple-100 text-purple-700'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
+                                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${activeAIPanel === 'copy'
+                                            ? 'bg-purple-100 text-purple-700'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                            }`}
                                     >
                                         <Type className="w-3.5 h-3.5" />
                                         Copy
                                     </button>
                                     <button
                                         onClick={() => setActiveAIPanel('recommendations')}
-                                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
-                                            activeAIPanel === 'recommendations'
-                                                ? 'bg-purple-100 text-purple-700'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
+                                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${activeAIPanel === 'recommendations'
+                                            ? 'bg-purple-100 text-purple-700'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                            }`}
                                     >
                                         <Lightbulb className="w-3.5 h-3.5" />
                                         Tips
@@ -238,6 +263,9 @@ function BuilderPageContent() {
 
             {/* Preview Modal */}
             {isPreviewOpen && <PreviewModal isOpen={true} onClose={() => setIsPreviewOpen(false)} />}
+
+            {/* Template Gallery */}
+            {showTemplates && <TemplateGallery onClose={() => setShowTemplates(false)} />}
         </div>
     );
 }

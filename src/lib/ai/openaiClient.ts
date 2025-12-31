@@ -1,82 +1,95 @@
 import OpenAI from 'openai';
 import { ApiError } from '../api-error';
 
-// Initialize OpenAI client
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
-    dangerouslyAllowBrowser: false, // Server-side only
 });
 
-export type CompletionOptions = {
-    model?: string;
-    temperature?: number;
-    maxTokens?: number;
-    jsonMode?: boolean;
+export type ImageGenerationOptions = {
+    width?: number;
+    height?: number;
+    numOutputs?: number;
+    style?: 'vivid' | 'natural';
+    quality?: 'standard' | 'hd';
 };
 
 /**
- * Generate text completion using OpenAI GPT models
+ * Generate images using OpenAI DALL-E 3
  */
-export async function generateCompletion(
+export async function generateImage(
     prompt: string,
-    options: CompletionOptions = {}
-): Promise<string> {
+    options: ImageGenerationOptions = {}
+): Promise<string[]> {
     try {
         const {
-            model = 'gpt-4o-mini', // Cost-effective model for production
-            temperature = 0.7,
-            maxTokens = 1000,
-            jsonMode = false,
+            width = 1024,
+            height = 1024,
+            numOutputs = 1,
+            style = 'vivid', // vivid = more dramatic, natural = more realistic
+            quality = 'standard', // standard or hd
         } = options;
 
-        const response = await openai.chat.completions.create({
-            model,
-            messages: [{ role: 'user', content: prompt }],
-            temperature,
-            max_tokens: maxTokens,
-            response_format: jsonMode ? { type: 'json_object' } : undefined,
-        });
-
-        const content = response.choices[0]?.message?.content;
-
-        if (!content) {
-            throw new Error('No content received from OpenAI');
+        // DALL-E 3 only supports specific sizes
+        let size: '1024x1024' | '1792x1024' | '1024x1792' = '1024x1024';
+        if (width > height) {
+            size = '1792x1024'; // Landscape
+        } else if (height > width) {
+            size = '1024x1792'; // Portrait
         }
 
-        return content;
-    } catch (error) {
+        // DALL-E 3 can only generate 1 image at a time, so we'll make multiple requests if needed
+        const imagePromises = Array.from({ length: numOutputs }, async () => {
+            const response = await openai.images.generate({
+                model: 'dall-e-3',
+                prompt: prompt,
+                n: 1,
+                size: size,
+                quality: quality,
+                style: style,
+            });
+
+            if (!response.data || !response.data[0]?.url) {
+                throw new Error('No image URL in response');
+            }
+
+            return response.data[0].url;
+        });
+
+        const imageUrls = await Promise.all(imagePromises);
+
+        // Filter out any undefined URLs
+        const validUrls = imageUrls.filter((url): url is string => url !== undefined);
+
+        if (validUrls.length === 0) {
+            throw new Error('No images generated');
+        }
+
+        return validUrls;
+    } catch (error: any) {
         console.error('OpenAI API Error:', error);
 
-        if (error instanceof OpenAI.APIError) {
+        // Provide more helpful error messages
+        if (error.status === 400) {
             throw new ApiError(
-                `OpenAI Error: ${error.message}`,
-                error.status || 500,
-                'OPENAI_API_ERROR'
+                'Invalid prompt or parameters. Please try a different description.',
+                400,
+                'INVALID_PROMPT'
             );
         }
 
-        throw new ApiError('Failed to generate completion', 500, 'AI_GENERATION_FAILED');
-    }
-}
+        if (error.status === 429) {
+            throw new ApiError(
+                'Rate limit exceeded. Please wait a moment and try again.',
+                429,
+                'RATE_LIMIT_EXCEEDED'
+            );
+        }
 
-/**
- * Generate structured data using function calling (simplified wrapper)
- */
-export async function generateStructuredData<T>(
-    prompt: string,
-    schema: any,
-    options: CompletionOptions = {}
-): Promise<T> {
-    try {
-        const content = await generateCompletion(
-            `${prompt}\n\nRespond with valid JSON matching this schema: ${JSON.stringify(schema)}`,
-            { ...options, jsonMode: true }
+        throw new ApiError(
+            error.message || 'Failed to generate image',
+            error.status || 500,
+            'IMAGE_GENERATION_FAILED'
         );
-
-        return JSON.parse(content) as T;
-    } catch (error) {
-        console.error('Structured Data Generation Error:', error);
-        throw new ApiError('Failed to generate structured data', 500, 'AI_STRUCTURED_DATA_FAILED');
     }
 }
 

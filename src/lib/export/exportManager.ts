@@ -58,16 +58,21 @@ export class ExportManager {
                     });
                 });
 
-                // 4. Export to Blob
-                const blob = await this.canvasToBlob(canvasEl, 'image/jpeg', quality);
+                // 4. Determine format - use PNG for transparency support
+                const exportFormat = 'image/png';
+                const exportQuality = 1.0; // Max quality
+
+                // 5. Export to Blob with transparency
+                const blob = await this.canvasToBlob(canvasEl, exportFormat, exportQuality);
 
                 if (blob) {
                     const url = URL.createObjectURL(blob);
+                    const extension = 'png'; // Always PNG for transparency
                     results.push({
                         format,
                         blob,
                         url,
-                        filename: `creative-${format.id}-${Date.now()}.jpg`,
+                        filename: `creative-${format.id}-${Date.now()}.${extension}`,
                     });
                 }
             } catch (error) {
@@ -85,10 +90,33 @@ export class ExportManager {
 
     private canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob | null> {
         return new Promise((resolve) => {
-            canvas.toBlob((blob) => {
-                resolve(blob);
-            }, type, quality);
+            // For PNG, transparency is automatically preserved
+            if (type === 'image/png') {
+                canvas.toBlob((blob) => {
+                    resolve(blob);
+                }, type); // PNG doesn't use quality parameter
+            } else {
+                canvas.toBlob((blob) => {
+                    resolve(blob);
+                }, type, quality);
+            }
         });
+    }
+
+    /**
+     * Export single canvas with transparency
+     */
+    async exportWithTransparency(canvas: any, filename: string = 'export.png'): Promise<Blob | null> {
+        const dataURL = canvas.toDataURL({
+            format: 'png',
+            quality: 1,
+            multiplier: 2, // 2x resolution
+            enableRetinaScaling: true,
+        });
+
+        // Convert data URL to blob
+        const response = await fetch(dataURL);
+        return await response.blob();
     }
 
     /**

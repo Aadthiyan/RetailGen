@@ -69,8 +69,42 @@ module.exports = {
                 },
             },
             fontFamily: {
-                sans: ['Inter', 'system-ui', 'sans-serif'],
-                display: ['Outfit', 'Inter', 'sans-serif'],
+                // Sans-serif fonts
+                sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+                inter: ['var(--font-inter)', 'sans-serif'],
+                outfit: ['var(--font-outfit)', 'sans-serif'],
+                montserrat: ['var(--font-montserrat)', 'sans-serif'],
+                roboto: ['var(--font-roboto)', 'sans-serif'],
+                poppins: ['var(--font-poppins)', 'sans-serif'],
+                raleway: ['var(--font-raleway)', 'sans-serif'],
+                opensans: ['var(--font-opensans)', 'sans-serif'],
+                sourcesans: ['var(--font-sourcesans)', 'sans-serif'],
+                ubuntu: ['var(--font-ubuntu)', 'sans-serif'],
+
+                // Serif fonts
+                playfair: ['var(--font-playfair)', 'serif'],
+                lora: ['var(--font-lora)', 'serif'],
+                merriweather: ['var(--font-merriweather)', 'serif'],
+                serif: ['var(--font-playfair)', 'Georgia', 'serif'],
+
+                // Display fonts (BEST FOR POSTERS!)
+                bebas: ['var(--font-bebas)', 'sans-serif'],
+                oswald: ['var(--font-oswald)', 'sans-serif'],
+                anton: ['var(--font-anton)', 'sans-serif'],
+                righteous: ['var(--font-righteous)', 'sans-serif'],
+                archivoblack: ['var(--font-archivoblack)', 'sans-serif'],
+                russoone: ['var(--font-russoone)', 'sans-serif'],
+                barlowcondensed: ['var(--font-barlowcondensed)', 'sans-serif'],
+                fjallaone: ['var(--font-fjallaone)', 'sans-serif'],
+                bangers: ['var(--font-bangers)', 'sans-serif'],
+                display: ['var(--font-bebas)', 'var(--font-anton)', 'sans-serif'],
+
+                // Script/Handwriting
+                dancing: ['var(--font-dancing)', 'cursive'],
+                pacifico: ['var(--font-pacifico)', 'cursive'],
+                lobster: ['var(--font-lobster)', 'cursive'],
+                permanentmarker: ['var(--font-permanentmarker)', 'cursive'],
+                script: ['var(--font-dancing)', 'cursive'],
             },
             spacing: {
                 '18': '4.5rem',

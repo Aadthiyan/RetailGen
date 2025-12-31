@@ -6,6 +6,7 @@ import { useAssetUpload } from '../hooks/useAssetUpload';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+
 export function AssetUploadPanel() {
     const { uploadFile, isUploading, progress, error } = useAssetUpload();
     const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');

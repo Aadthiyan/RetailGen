@@ -269,37 +269,497 @@ export class ComplianceValidator {
         };
     }
 
-    // Placeholder validators (would be fully implemented in production)
+    // Real validators - fully implemented
     private validateLogoClearspace(rule: ComplianceRule, canvas: any): ValidationResult {
-        return { ruleId: rule.id, ruleName: rule.name, passed: true, severity: rule.severity, category: rule.category, message: 'Logo clearspace validated' };
+        const { minClearSpace, logoIdentifier } = rule.validator.params;
+        const logos = canvas.objects?.filter((obj: any) =>
+            obj.type === 'image' && obj.name?.includes('logo')
+        ) || [];
+
+        if (logos.length === 0) {
+            return {
+                ruleId: rule.id,
+                ruleName: rule.name,
+                passed: false,
+                severity: rule.severity,
+                category: rule.category,
+                message: 'No logo found to check clearspace',
+            };
+        }
+
+        const logo = logos[0];
+        const clearSpacePx = this.mmToPixels(minClearSpace, canvas.width);
+        const logoLeft = logo.left || 0;
+        const logoTop = logo.top || 0;
+        const logoRight = logoLeft + (logo.width || 0) * (logo.scaleX || 1);
+        const logoBottom = logoTop + (logo.height || 0) * (logo.scaleY || 1);
+
+        const violations: any[] = [];
+        const objects = canvas.objects || [];
+
+        for (const obj of objects) {
+            if (obj === logo) continue;
+
+            const objLeft = obj.left || 0;
+            const objTop = obj.top || 0;
+            const objRight = objLeft + (obj.width || 0) * (obj.scaleX || 1);
+            const objBottom = objTop + (obj.height || 0) * (obj.scaleY || 1);
+
+            // Check if object is too close to logo
+            const horizontalDistance = Math.min(
+                Math.abs(objLeft - logoRight),
+                Math.abs(objRight - logoLeft)
+            );
+            const verticalDistance = Math.min(
+                Math.abs(objTop - logoBottom),
+                Math.abs(objBottom - logoTop)
+            );
+
+            if (horizontalDistance < clearSpacePx || verticalDistance < clearSpacePx) {
+                violations.push({
+                    element: obj.name || 'element',
+                    distance: Math.min(horizontalDistance, verticalDistance),
+                });
+            }
+        }
+
+        const passed = violations.length === 0;
+
+        return {
+            ruleId: rule.id,
+            ruleName: rule.name,
+            passed,
+            severity: rule.severity,
+            category: rule.category,
+            message: passed
+                ? 'Logo clearspace maintained'
+                : `${violations.length} element(s) too close to logo`,
+            suggestion: passed ? undefined : `Maintain ${minClearSpace}mm clearspace around logo`,
+            affectedElements: violations.map(v => v.element),
+            details: { violations, requiredClearSpace: minClearSpace },
+        };
     }
 
     private validateLogoPlacement(rule: ComplianceRule, canvas: any): ValidationResult {
-        return { ruleId: rule.id, ruleName: rule.name, passed: true, severity: rule.severity, category: rule.category, message: 'Logo placement validated' };
+        const { preferredPositions, maxDistanceFromCorner } = rule.validator.params;
+        const logos = canvas.objects?.filter((obj: any) =>
+            obj.type === 'image' && obj.name?.includes('logo')
+        ) || [];
+
+        if (logos.length === 0) {
+            return {
+                ruleId: rule.id,
+                ruleName: rule.name,
+                passed: false,
+                severity: rule.severity,
+                category: rule.category,
+                message: 'No logo found',
+            };
+        }
+
+        const logo = logos[0];
+        const logoLeft = logo.left || 0;
+        const logoTop = logo.top || 0;
+        const logoWidth = (logo.width || 0) * (logo.scaleX || 1);
+        const logoHeight = (logo.height || 0) * (logo.scaleY || 1);
+        const logoCenterX = logoLeft + logoWidth / 2;
+        const logoCenterY = logoTop + logoHeight / 2;
+
+        const maxDistPx = this.mmToPixels(maxDistanceFromCorner, canvas.width);
+
+        // Check each preferred position
+        let inPreferredPosition = false;
+        let closestPosition = '';
+        let minDistance = Infinity;
+
+        const positions = {
+            'top-left': { x: 0, y: 0 },
+            'top-right': { x: canvas.width, y: 0 },
+            'bottom-left': { x: 0, y: canvas.height },
+            'bottom-right': { x: canvas.width, y: canvas.height },
+        };
+
+        for (const pos of preferredPositions) {
+            const corner = positions[pos as keyof typeof positions];
+            if (!corner) continue;
+
+            const distance = Math.sqrt(
+                Math.pow(logoCenterX - corner.x, 2) +
+                Math.pow(logoCenterY - corner.y, 2)
+            );
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestPosition = pos;
+            }
+
+            if (distance <= maxDistPx) {
+                inPreferredPosition = true;
+                break;
+            }
+        }
+
+        return {
+            ruleId: rule.id,
+            ruleName: rule.name,
+            passed: inPreferredPosition,
+            severity: rule.severity,
+            category: rule.category,
+            message: inPreferredPosition
+                ? `Logo correctly placed in ${closestPosition}`
+                : `Logo should be in ${preferredPositions.join(' or ')}`,
+            suggestion: inPreferredPosition ? undefined : `Move logo to ${preferredPositions[0]} corner`,
+            details: { currentPosition: closestPosition, preferredPositions },
+        };
     }
 
     private validateTextProminence(rule: ComplianceRule, canvas: any): ValidationResult {
-        return { ruleId: rule.id, ruleName: rule.name, passed: true, severity: rule.severity, category: rule.category, message: 'Text prominence validated' };
+        const { elementType, minSize, minContrast } = rule.validator.params;
+        const textObjects = canvas.objects?.filter((obj: any) =>
+            (obj.type === 'i-text' || obj.type === 'text') &&
+            obj.name?.toLowerCase().includes(elementType.toLowerCase())
+        ) || [];
+
+        if (textObjects.length === 0) {
+            return {
+                ruleId: rule.id,
+                ruleName: rule.name,
+                passed: false,
+                severity: rule.severity,
+                category: rule.category,
+                message: `No ${elementType} text found`,
+                suggestion: `Add ${elementType} text to your creative`,
+            };
+        }
+
+        const violations: any[] = [];
+
+        for (const text of textObjects) {
+            const fontSize = text.fontSize || 12;
+
+            // Check size
+            if (fontSize < minSize) {
+                violations.push({
+                    element: text.name || 'text',
+                    issue: 'size',
+                    current: fontSize,
+                    required: minSize,
+                });
+            }
+
+            // Check contrast (simplified - would need background color detection in production)
+            const textColor = text.fill || '#000000';
+            const bgColor = canvas.backgroundColor || '#FFFFFF';
+            const contrast = this.calculateContrastRatio(textColor, bgColor);
+
+            if (contrast < minContrast) {
+                violations.push({
+                    element: text.name || 'text',
+                    issue: 'contrast',
+                    current: contrast.toFixed(2),
+                    required: minContrast,
+                });
+            }
+        }
+
+        const passed = violations.length === 0;
+
+        return {
+            ruleId: rule.id,
+            ruleName: rule.name,
+            passed,
+            severity: rule.severity,
+            category: rule.category,
+            message: passed
+                ? `${elementType} prominence validated`
+                : `${violations.length} ${elementType} prominence issue(s)`,
+            suggestion: passed ? undefined : `Increase ${elementType} size to ${minSize}pt and improve contrast`,
+            affectedElements: violations.map(v => v.element),
+            details: { violations },
+        };
     }
 
     private validateColorRestriction(rule: ComplianceRule, canvas: any): ValidationResult {
-        return { ruleId: rule.id, ruleName: rule.name, passed: true, severity: rule.severity, category: rule.category, message: 'Colors validated' };
+        const { approvedColors, tolerance } = rule.validator.params;
+        const objects = canvas.objects || [];
+        const violations: any[] = [];
+
+        for (const obj of objects) {
+            const color = obj.fill || obj.stroke;
+            if (!color || typeof color !== 'string') continue;
+
+            const isApproved = approvedColors.some((approved: string) =>
+                this.colorDistance(color, approved) <= tolerance
+            );
+
+            if (!isApproved) {
+                violations.push({
+                    element: obj.name || 'element',
+                    color: color,
+                    closestApproved: this.findClosestColor(color, approvedColors),
+                });
+            }
+        }
+
+        const passed = violations.length === 0;
+
+        return {
+            ruleId: rule.id,
+            ruleName: rule.name,
+            passed,
+            severity: rule.severity,
+            category: rule.category,
+            message: passed
+                ? 'All colors are brand-approved'
+                : `${violations.length} non-approved color(s) used`,
+            suggestion: passed ? undefined : `Use only approved brand colors: ${approvedColors.join(', ')}`,
+            affectedElements: violations.map(v => v.element),
+            details: { violations, approvedColors },
+        };
     }
 
     private validateElementPosition(rule: ComplianceRule, canvas: any): ValidationResult {
-        return { ruleId: rule.id, ruleName: rule.name, passed: true, severity: rule.severity, category: rule.category, message: 'Element position validated' };
+        const { elementType, position, maxDistanceFromEdge } = rule.validator.params;
+        const elements = canvas.objects?.filter((obj: any) =>
+            obj.name?.toLowerCase().includes(elementType.toLowerCase())
+        ) || [];
+
+        if (elements.length === 0) {
+            return {
+                ruleId: rule.id,
+                ruleName: rule.name,
+                passed: false,
+                severity: rule.severity,
+                category: rule.category,
+                message: `No ${elementType} found`,
+                suggestion: `Add ${elementType} to your creative`,
+            };
+        }
+
+        const element = elements[0];
+        const maxDistPx = this.mmToPixels(maxDistanceFromEdge, canvas.width);
+        const elementTop = element.top || 0;
+        const elementBottom = elementTop + (element.height || 0) * (element.scaleY || 1);
+
+        let passed = false;
+        let distance = 0;
+
+        if (position === 'bottom') {
+            distance = canvas.height - elementBottom;
+            passed = distance <= maxDistPx;
+        } else if (position === 'top') {
+            distance = elementTop;
+            passed = distance <= maxDistPx;
+        }
+
+        return {
+            ruleId: rule.id,
+            ruleName: rule.name,
+            passed,
+            severity: rule.severity,
+            category: rule.category,
+            message: passed
+                ? `${elementType} correctly positioned at ${position}`
+                : `${elementType} should be at ${position} (within ${maxDistanceFromEdge}mm)`,
+            suggestion: passed ? undefined : `Move ${elementType} to ${position} of creative`,
+            affectedElements: [element.name || elementType],
+            details: { currentDistance: this.pixelsToMM(distance, canvas.width), maxDistance: maxDistanceFromEdge },
+        };
     }
 
     private validateContrastRatio(rule: ComplianceRule, canvas: any): ValidationResult {
-        return { ruleId: rule.id, ruleName: rule.name, passed: true, severity: rule.severity, category: rule.category, message: 'Contrast ratio validated' };
+        const { minRatio, applyToAll } = rule.validator.params;
+        const textObjects = canvas.objects?.filter((obj: any) =>
+            obj.type === 'i-text' || obj.type === 'text'
+        ) || [];
+
+        const violations: any[] = [];
+
+        for (const text of textObjects) {
+            const textColor = text.fill || '#000000';
+            const bgColor = canvas.backgroundColor || '#FFFFFF';
+            const contrast = this.calculateContrastRatio(textColor, bgColor);
+
+            if (contrast < minRatio) {
+                violations.push({
+                    element: text.name || 'text',
+                    contrast: contrast.toFixed(2),
+                    required: minRatio,
+                    textColor,
+                    bgColor,
+                });
+            }
+        }
+
+        const passed = violations.length === 0;
+
+        return {
+            ruleId: rule.id,
+            ruleName: rule.name,
+            passed,
+            severity: rule.severity,
+            category: rule.category,
+            message: passed
+                ? 'All text has sufficient contrast'
+                : `${violations.length} text element(s) with low contrast`,
+            suggestion: passed ? undefined : `Increase contrast to at least ${minRatio}:1 (WCAG AA)`,
+            affectedElements: violations.map(v => v.element),
+            details: { violations, minRatio },
+        };
     }
 
     private validateImageQuality(rule: ComplianceRule, canvas: any): ValidationResult {
-        return { ruleId: rule.id, ruleName: rule.name, passed: true, severity: rule.severity, category: rule.category, message: 'Image quality validated' };
+        const { minDPI } = rule.validator.params;
+        const images = canvas.objects?.filter((obj: any) => obj.type === 'image') || [];
+
+        if (images.length === 0) {
+            return {
+                ruleId: rule.id,
+                ruleName: rule.name,
+                passed: true,
+                severity: rule.severity,
+                category: rule.category,
+                message: 'No images to check',
+            };
+        }
+
+        const violations: any[] = [];
+
+        for (const img of images) {
+            // Estimate DPI based on scale
+            const originalWidth = img.width || 0;
+            const scaledWidth = originalWidth * (img.scaleX || 1);
+            const widthMM = this.pixelsToMM(scaledWidth, canvas.width);
+            const estimatedDPI = (originalWidth / widthMM) * 25.4; // Convert mm to inches
+
+            if (estimatedDPI < minDPI) {
+                violations.push({
+                    element: img.name || 'image',
+                    estimatedDPI: Math.round(estimatedDPI),
+                    required: minDPI,
+                });
+            }
+        }
+
+        const passed = violations.length === 0;
+
+        return {
+            ruleId: rule.id,
+            ruleName: rule.name,
+            passed,
+            severity: rule.severity,
+            category: rule.category,
+            message: passed
+                ? 'All images meet quality standards'
+                : `${violations.length} image(s) below ${minDPI} DPI`,
+            suggestion: passed ? undefined : `Use higher resolution images (${minDPI}+ DPI)`,
+            affectedElements: violations.map(v => v.element),
+            details: { violations, minDPI },
+        };
     }
 
     private validateAspectRatio(rule: ComplianceRule, canvas: any): ValidationResult {
-        return { ruleId: rule.id, ruleName: rule.name, passed: true, severity: rule.severity, category: rule.category, message: 'Aspect ratio validated' };
+        const { approved, tolerance } = rule.validator.params;
+        const width = canvas.width || 1080;
+        const height = canvas.height || 1080;
+        const currentRatio = width / height;
+
+        let passed = false;
+        let closestRatio = '';
+        let minDiff = Infinity;
+
+        for (const ratio of approved) {
+            const [w, h] = ratio.split(':').map(Number);
+            const approvedRatio = w / h;
+            const diff = Math.abs(currentRatio - approvedRatio);
+
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestRatio = ratio;
+            }
+
+            if (diff <= tolerance) {
+                passed = true;
+                break;
+            }
+        }
+
+        return {
+            ruleId: rule.id,
+            ruleName: rule.name,
+            passed,
+            severity: rule.severity,
+            category: rule.category,
+            message: passed
+                ? `Aspect ratio matches ${closestRatio}`
+                : `Aspect ratio doesn't match approved ratios. Closest: ${closestRatio}`,
+            suggestion: passed ? undefined : `Use one of these aspect ratios: ${approved.join(', ')}`,
+            details: {
+                currentRatio: `${width}:${height}`,
+                currentDecimal: currentRatio.toFixed(2),
+                closestApproved: closestRatio,
+                approved,
+            },
+        };
+    }
+
+    /**
+     * Utility functions for color and contrast calculations
+     */
+    private calculateContrastRatio(color1: string, color2: string): number {
+        const lum1 = this.getLuminance(color1);
+        const lum2 = this.getLuminance(color2);
+        const lighter = Math.max(lum1, lum2);
+        const darker = Math.min(lum1, lum2);
+        return (lighter + 0.05) / (darker + 0.05);
+    }
+
+    private getLuminance(color: string): number {
+        const rgb = this.hexToRgb(color);
+        if (!rgb) return 0;
+
+        const [r, g, b] = [rgb.r, rgb.g, rgb.b].map(val => {
+            val = val / 255;
+            return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+        });
+
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    private hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16),
+        } : null;
+    }
+
+    private colorDistance(color1: string, color2: string): number {
+        const rgb1 = this.hexToRgb(color1);
+        const rgb2 = this.hexToRgb(color2);
+        if (!rgb1 || !rgb2) return Infinity;
+
+        return Math.sqrt(
+            Math.pow(rgb1.r - rgb2.r, 2) +
+            Math.pow(rgb1.g - rgb2.g, 2) +
+            Math.pow(rgb1.b - rgb2.b, 2)
+        );
+    }
+
+    private findClosestColor(color: string, approvedColors: string[]): string {
+        let closest = approvedColors[0];
+        let minDistance = Infinity;
+
+        for (const approved of approvedColors) {
+            const distance = this.colorDistance(color, approved);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closest = approved;
+            }
+        }
+
+        return closest;
     }
 
     /**

@@ -1,3 +1,5 @@
+'use client';
+
 import { create } from 'zustand';
 import { AdFormat, AD_FORMATS } from '../config/formats';
 

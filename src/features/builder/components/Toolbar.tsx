@@ -1,11 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { useBuilderStore } from '../store/builderStore';
-import { Type, Square, Circle, Image as ImageIcon, MousePointer2 } from 'lucide-react';
+import { Type, Square, Circle, Image as ImageIcon, MousePointer2, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AssetSelectorPanel } from './AssetSelectorPanel';
 
-export function Toolbar() {
+export function Toolbar({ onExportClick }: { onExportClick?: () => void }) {
     const { addObject, canvas } = useBuilderStore();
+    const [showAssetSelector, setShowAssetSelector] = useState(false);
 
     const addText = async () => {
         const fabricModule = await import('fabric');
@@ -48,30 +51,51 @@ export function Toolbar() {
         addObject(circle);
     };
 
-    // Placeholder for image upload trigger
     const triggerImageUpload = () => {
-        // This would typically open the asset sidebar or a file picker
-        alert('Use the Assets tab to add images!');
+        setShowAssetSelector(true);
     };
 
     return (
-        <div className="flex flex-col gap-2 p-2 bg-white border-r border-gray-200 w-16 items-center h-full">
-            <ToolButton icon={MousePointer2} label="Select" active onClick={() => { }} />
-            <ToolButton icon={Type} label="Text" onClick={addText} />
-            <ToolButton icon={Square} label="Rect" onClick={addRectangle} />
-            <ToolButton icon={Circle} label="Circle" onClick={addCircle} />
-            <ToolButton icon={ImageIcon} label="Image" onClick={triggerImageUpload} />
-        </div>
+        <>
+            <div className="flex flex-col gap-2 p-2 bg-white border-r border-gray-200 w-16 items-center h-full">
+                <ToolButton icon={MousePointer2} label="Select" active onClick={() => { }} />
+                <ToolButton icon={Type} label="Text" onClick={addText} />
+                <ToolButton icon={Square} label="Rect" onClick={addRectangle} />
+                <ToolButton icon={Circle} label="Circle" onClick={addCircle} />
+                <ToolButton icon={ImageIcon} label="Image" onClick={triggerImageUpload} active={showAssetSelector} />
+
+                {/* Spacer */}
+                <div className="flex-1" />
+
+                {/* Export Button */}
+                <div className="w-full border-t border-gray-200 pt-2">
+                    <ToolButton
+                        icon={Download}
+                        label="Export"
+                        onClick={onExportClick}
+                        className="bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 hover:from-green-100 hover:to-emerald-100"
+                    />
+                </div>
+            </div>
+
+            {/* Asset Selector Panel - shown as overlay */}
+            {showAssetSelector && (
+                <div className="fixed right-0 top-0 bottom-0 z-50 shadow-2xl">
+                    <AssetSelectorPanel onClose={() => setShowAssetSelector(false)} />
+                </div>
+            )}
+        </>
     );
 }
 
-function ToolButton({ icon: Icon, label, onClick, active }: any) {
+function ToolButton({ icon: Icon, label, onClick, active, className }: any) {
     return (
         <button
             onClick={onClick}
             className={cn(
                 "p-3 rounded-lg flex flex-col items-center justify-center gap-1 w-full transition-colors",
-                active ? "bg-primary-50 text-primary-600" : "text-gray-600 hover:bg-gray-100"
+                active ? "bg-primary-50 text-primary-600" : "text-gray-600 hover:bg-gray-100",
+                className
             )}
             title={label}
         >
