@@ -132,6 +132,19 @@ export class ComplianceValidator {
             obj.type === 'i-text' || obj.type === 'text'
         ) || [];
 
+        // FIX: Check if any text objects exist
+        if (textObjects.length === 0) {
+            return {
+                ruleId: rule.id,
+                ruleName: rule.name,
+                passed: false,
+                severity: 'warning',
+                category: rule.category,
+                message: 'No text elements found on canvas',
+                suggestion: 'Add text elements to your design',
+            };
+        }
+
         const violations: any[] = [];
 
         for (const text of textObjects) {
@@ -167,6 +180,7 @@ export class ComplianceValidator {
             details: { violations },
         };
     }
+
 
     private validateMandatoryElements(rule: ComplianceRule, canvas: any): ValidationResult {
         const { required } = rule.validator.params;
@@ -250,6 +264,19 @@ export class ComplianceValidator {
         const textObjects = canvas.objects?.filter((obj: any) =>
             obj.type === 'i-text' || obj.type === 'text'
         ) || [];
+
+        // FIX: Check if any text objects exist
+        if (textObjects.length === 0) {
+            return {
+                ruleId: rule.id,
+                ruleName: rule.name,
+                passed: false,
+                severity: 'warning',
+                category: rule.category,
+                message: 'No text elements found on canvas',
+                suggestion: 'Add text elements to your design',
+            };
+        }
 
         const fonts = new Set(textObjects.map((obj: any) => obj.fontFamily || 'Arial'));
         const fontCount = fonts.size;
@@ -616,10 +643,11 @@ export class ComplianceValidator {
             return {
                 ruleId: rule.id,
                 ruleName: rule.name,
-                passed: true,
-                severity: rule.severity,
+                passed: false,  // FIX: Changed from true to false
+                severity: 'warning',
                 category: rule.category,
-                message: 'No images to check',
+                message: 'No images found on canvas',
+                suggestion: 'Add images to your design',
             };
         }
 
