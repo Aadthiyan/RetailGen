@@ -37,19 +37,21 @@ import { RecommendationsPanel } from '@/features/builder/components/Recommendati
 import { CompliancePanel } from '@/features/builder/components/CompliancePanel';
 import { ExportPanel } from '@/features/builder/components/ExportPanel';
 import { TemplateGallery } from '@/features/builder/components/TemplateGallery';
-import { useSearchParams } from 'next/navigation';
-import { useQuery } from 'convex/react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 import { useEffect, useState } from 'react';
 import { useBuilderStore } from '@/features/builder/store/builderStore';
 import { useAutoSave } from '@/features/builder/hooks/useAutoSave';
+import { useKeyboardShortcuts } from '@/features/builder/hooks/useKeyboardShortcuts';
 import { Id } from '../../../../convex/_generated/dataModel';
 import { PreviewModal } from '@/features/builder/components/PreviewModal';
 import { Loader2, CheckCircle, AlertCircle, Eye, Sparkles, Image as ImageIcon, Type, Lightbulb, ShieldCheck, Share2 } from 'lucide-react';
 
 function BuilderPageContent() {
     const searchParams = useSearchParams();
-    const creativeId = searchParams.get('id');
+    const router = useRouter();
+    const creativeIdParam = searchParams.get('id');
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [showAIPanel, setShowAIPanel] = useState(false);
     const [showCompliancePanel, setShowCompliancePanel] = useState(false);
@@ -57,9 +59,11 @@ function BuilderPageContent() {
     const [showTemplates, setShowTemplates] = useState(false);
     const [activeAIPanel, setActiveAIPanel] = useState<'layout' | 'copy' | 'recommendations'>('layout');
 
-    const creative = useQuery(api.creatives.get, creativeId ? { id: creativeId as Id<"creatives"> } : "skip");
+    const creative = useQuery(api.creatives.get, creativeIdParam ? { id: creativeIdParam as Id<"creatives"> } : "skip");
+    const createCreative = useMutation(api.creatives.create);
+    const updateCreative = useMutation(api.creatives.update);
 
-    const { setCreativeId, loadFromJSON, saveStatus, setFormat } = useBuilderStore();
+    const { canvas, creativeId, setCreativeId, loadFromJSON, saveStatus, setFormat, currentFormat } = useBuilderStore();
 
     // Initialize Store
     useEffect(() => {
@@ -74,8 +78,57 @@ function BuilderPageContent() {
         }
     }, [creative, setCreativeId, loadFromJSON, setFormat]);
 
+    // Auto-create creative when user starts working without one
+    useEffect(() => {
+        if (!canvas || creativeId || creativeIdParam) return;
+
+        let hasCreated = false;
+
+        const handleFirstEdit = async () => {
+            if (hasCreated) return;
+            hasCreated = true;
+
+            try {
+                console.log('🎨 Auto-creating creative for unsaved work...');
+
+                const newCreative = await createCreative({
+                    name: `Untitled ${new Date().toLocaleDateString()}`,
+                    format: currentFormat.id,
+                    dimensions: {
+                        width: currentFormat.width,
+                        height: currentFormat.height,
+                    },
+                    content: canvas.toJSON(['name', 'selectable', 'evented']),
+                });
+
+                setCreativeId(newCreative);
+
+                // Update URL with new creative ID
+                const newUrl = `/app/builder?id=${newCreative}`;
+                window.history.replaceState({}, '', newUrl);
+
+                console.log('✅ Creative auto-created:', newCreative);
+            } catch (error) {
+                console.error('Failed to auto-create creative:', error);
+                hasCreated = false; // Allow retry
+            }
+        };
+
+        // Listen for first edit
+        canvas.on('object:added', handleFirstEdit);
+        canvas.on('object:modified', handleFirstEdit);
+
+        return () => {
+            canvas.off('object:added', handleFirstEdit);
+            canvas.off('object:modified', handleFirstEdit);
+        };
+    }, [canvas, creativeId, creativeIdParam, createCreative, setCreativeId, currentFormat]);
+
     // Enable Autosave
     useAutoSave();
+
+    // Enable Keyboard Shortcuts
+    useKeyboardShortcuts();
 
     const toggleAIPanel = () => {
         setShowAIPanel(!showAIPanel);
@@ -95,17 +148,53 @@ function BuilderPageContent() {
         if (showCompliancePanel) setShowCompliancePanel(false);
     };
 
+    const [creativeName, setCreativeName] = useState(creative?.name || 'Untitled');
+
+    // Update local state when creative loads
+    useEffect(() => {
+        if (creative?.name) {
+            setCreativeName(creative.name);
+        }
+    }, [creative?.name]);
+
+    // Debounced save
+    const handleNameChange = (newName: string) => {
+        setCreativeName(newName);
+
+        // Debounce the save
+        if (creativeId && updateCreative) {
+            setTimeout(() => {
+                updateCreative({
+                    id: creativeId as any,
+                    name: newName,
+                });
+            }, 500);
+        }
+    };
+
     return (
         <div className="flex flex-col h-screen bg-gray-50">
-            {/* Save Status Indicator */}
-            {saveStatus && (
-                <div className="flex items-center justify-center gap-2 h-8 bg-blue-50 text-blue-700 text-sm">
-                    {saveStatus === 'saving' && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {saveStatus === 'saved' && <CheckCircle className="w-4 h-4" />}
-                    {saveStatus === 'error' && <AlertCircle className="w-4 h-4" />}
-                    {saveStatus}
-                </div>
-            )}
+            {/* Title Bar */}
+            <div className="flex items-center justify-between h-12 px-4 bg-white border-b border-gray-200" suppressHydrationWarning>
+                <input
+                    type="text"
+                    value={creativeName}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    className="text-lg font-semibold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1"
+                    placeholder="Untitled Creative"
+                    suppressHydrationWarning
+                />
+
+                {/* Save Status */}
+                {saveStatus && (
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-sm" suppressHydrationWarning>
+                        {saveStatus === 'saving' && <Loader2 className="w-4 h-4 animate-spin text-blue-600" />}
+                        {saveStatus === 'saved' && <CheckCircle className="w-4 h-4 text-green-600" />}
+                        {saveStatus === 'error' && <AlertCircle className="w-4 h-4 text-red-600" />}
+                        <span className="text-gray-700 capitalize">{saveStatus}</span>
+                    </div>
+                )}
+            </div>
 
             {/* Main Layout */}
             <div className="flex flex-1 overflow-hidden">

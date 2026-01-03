@@ -1,21 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShieldCheck, ShieldAlert, AlertTriangle, CheckCircle, XCircle, Loader2, RefreshCw, ChevronDown, ChevronUp, Sparkles, HelpCircle, ArrowRight, FileText, Award, Download } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, AlertTriangle, CheckCircle, XCircle, Loader2, RefreshCw, ChevronDown, ChevronUp, Sparkles, HelpCircle, ArrowRight, FileText, Award, Download, Wand2 } from 'lucide-react';
 import { useBuilderStore } from '../store/builderStore';
 import { useMutation } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
+import { ComplianceAutoFixer } from '../../../lib/compliance/autoFixer';
+import { ValidationResult as ComplianceValidationResult } from '../../../lib/compliance/rules';
 
-interface ValidationResult {
-    ruleId: string;
-    ruleName: string;
-    passed: boolean;
-    severity: 'error' | 'warning' | 'info';
-    category: string;
-    message: string;
-    suggestion?: string;
-    details?: any;
-}
+type ValidationResult = ComplianceValidationResult;
+
 
 interface CopilotGuidance {
     explanation: string;
@@ -48,10 +42,48 @@ export function CompliancePanel() {
     const [guidanceMap, setGuidanceMap] = useState<Record<string, CopilotGuidance>>({});
     const [loadingGuidance, setLoadingGuidance] = useState<string | null>(null);
     const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+    const [isAutoFixing, setIsAutoFixing] = useState(false);
 
     const storeResult = useMutation(api.compliance.storeComplianceResult);
     const logAudit = useMutation(api.compliance.logAuditEntry);
     const issueCert = useMutation(api.compliance.issueCertificate);
+
+    // Magic Auto-Fix All Function
+    const autoFixAll = async () => {
+        if (!canvas || !report) return;
+
+        setIsAutoFixing(true);
+        try {
+            const autoFixer = new ComplianceAutoFixer(canvas);
+            const result = await autoFixer.fixAll(report.results);
+
+            if (result.success) {
+                alert(`✨ Magic Auto-Fix Complete!\n\nFixed ${result.appliedFixes.length} violations:\n${result.appliedFixes.map(f => `• ${f.description}`).join('\n')}`);
+
+                // Log the auto-fix action
+                if (creativeId) {
+                    await logAudit({
+                        creativeId: creativeId as any,
+                        action: 'auto-fix',
+                        details: {
+                            fixedCount: result.appliedFixes.length,
+                            fixes: result.appliedFixes.map(f => f.description)
+                        }
+                    });
+                }
+
+                // Re-run validation to show updated results
+                setTimeout(runValidation, 500);
+            } else {
+                alert(`Auto-Fix completed with errors:\n${result.errors.join('\n')}`);
+            }
+        } catch (error) {
+            console.error('Auto-fix failed:', error);
+            alert('Auto-fix failed. Please try manual fixes.');
+        } finally {
+            setIsAutoFixing(false);
+        }
+    };
 
     const runValidation = async () => {
         if (!canvas) return;
@@ -252,15 +284,38 @@ export function CompliancePanel() {
                         <ShieldCheck className="w-4 h-4 text-primary-500" />
                         Compliance Copilot
                     </h3>
-                    <button
-                        onClick={runValidation}
-                        disabled={isLoading || !canvas}
-                        className="text-xs px-2 py-1 text-primary-600 hover:bg-primary-50 rounded transition-colors disabled:opacity-50 flex items-center gap-1"
-                    >
-                        {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                        {isLoading ? 'Checking...' : 'Check'}
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={runValidation}
+                            disabled={isLoading || !canvas}
+                            className="text-xs px-2 py-1 text-primary-600 hover:bg-primary-50 rounded transition-colors disabled:opacity-50 flex items-center gap-1"
+                        >
+                            {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                            {isLoading ? 'Checking...' : 'Check'}
+                        </button>
+                    </div>
                 </div>
+
+                {/* Magic Auto-Fix All Button */}
+                {report && (report.summary.failed > 0 || report.summary.warnings > 0) && (
+                    <button
+                        onClick={autoFixAll}
+                        disabled={isAutoFixing || !canvas}
+                        className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-semibold rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isAutoFixing ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Fixing...
+                            </>
+                        ) : (
+                            <>
+                                <Wand2 className="w-4 h-4" />
+                                ✨ Magic Auto-Fix All
+                            </>
+                        )}
+                    </button>
+                )}
 
                 {report ? (
                     <div className={`p-4 rounded-lg border ${getStatusColor(report.overallStatus)} mb-2`}>

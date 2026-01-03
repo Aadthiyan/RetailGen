@@ -48,8 +48,11 @@ export const update = mutation({
         if (!creative) throw new Error("Creative not found");
         if (creative.userId !== identity.tokenIdentifier) throw new Error("Unauthorized");
 
-        await ctx.db.patch(args.id, {
-            ...args,
+        // Extract id from args to avoid passing it to patch
+        const { id, ...updateData } = args;
+
+        await ctx.db.patch(id, {
+            ...updateData,
             lastModified: Date.now(),
             version: creative.version + 1,
         });

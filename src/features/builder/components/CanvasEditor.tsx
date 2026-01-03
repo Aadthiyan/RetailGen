@@ -98,7 +98,15 @@ export function CanvasEditor({ className }: CanvasEditorProps) {
 
                 // Responsive sizing logic
                 const resizeCanvas = () => {
-                    if (!containerRef.current || !canvasInstance) return;
+                    if (!containerRef.current) return;
+                    if (!canvasInstance) return;
+
+                    // Additional safety check
+                    if (!canvasInstance.setZoom || !canvasInstance.setWidth || !canvasInstance.setHeight) {
+                        console.warn('Canvas instance not fully initialized');
+                        return;
+                    }
+
                     const containerWidth = containerRef.current.clientWidth;
                     const containerHeight = containerRef.current.clientHeight;
 
@@ -111,10 +119,14 @@ export function CanvasEditor({ className }: CanvasEditorProps) {
 
                     const zoom = Math.min(scale, 1);
 
-                    canvasInstance.setZoom(zoom);
-                    canvasInstance.setWidth(canvasSize.width * zoom);
-                    canvasInstance.setHeight(canvasSize.height * zoom);
-                    canvasInstance.renderAll();
+                    try {
+                        canvasInstance.setZoom(zoom);
+                        canvasInstance.setWidth(canvasSize.width * zoom);
+                        canvasInstance.setHeight(canvasSize.height * zoom);
+                        canvasInstance.renderAll();
+                    } catch (error) {
+                        console.error('Error resizing canvas:', error);
+                    }
                 };
 
                 window.addEventListener('resize', resizeCanvas);
@@ -130,11 +142,16 @@ export function CanvasEditor({ className }: CanvasEditorProps) {
 
         return () => {
             isMounted = false;
-            window.removeEventListener('resize', () => { }); // Cleanup listener
+
+            // Remove resize listener properly
+            const resizeHandler = () => { };
+            window.removeEventListener('resize', resizeHandler);
 
             if (canvasInstance) {
                 console.log("🧹 Disposing Fabric canvas");
                 try {
+                    // Clear all objects before disposing to prevent image loading errors
+                    canvasInstance.clear();
                     canvasInstance.dispose();
                 } catch (e) {
                     console.warn("Error disposing canvas:", e);

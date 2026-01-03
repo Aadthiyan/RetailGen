@@ -2,8 +2,23 @@
 
 import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
+import { useQuery } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
+import { FileText, Clock } from 'lucide-react';
 
 export default function DashboardPage() {
+    const creatives = useQuery(api.creatives.list);
+
+    const formatDate = (timestamp: number) => {
+        return new Date(timestamp).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
@@ -12,7 +27,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-8">
                         <h1 className="text-2xl font-bold text-primary-600">RetailGen AI</h1>
                         <nav className="hidden md:flex gap-6">
-                            <Link href="/app/dashboard" className="text-gray-700 hover:text-primary-600 font-medium">
+                            <Link href="/app/dashboard" className="text-primary-600 hover:text-primary-700 font-medium border-b-2 border-primary-600 pb-1">
                                 Dashboard
                             </Link>
                             <Link href="/app/projects" className="text-gray-700 hover:text-primary-600 font-medium">
@@ -68,6 +83,55 @@ export default function DashboardPage() {
                             Access your saved projects and creatives
                         </p>
                     </Link>
+                </div>
+
+                {/* Recent Creatives */}
+                <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-2xl font-bold text-gray-900">Recent Creatives</h3>
+                        <Link href="/app/projects" className="text-primary-600 hover:text-primary-700 font-medium text-sm">
+                            View All →
+                        </Link>
+                    </div>
+
+                    {creatives === undefined ? (
+                        <div className="text-center py-8 text-gray-500">Loading...</div>
+                    ) : creatives.length === 0 ? (
+                        <div className="bg-white rounded-xl p-8 text-center">
+                            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                            <h4 className="text-lg font-semibold text-gray-900 mb-2">No creatives yet</h4>
+                            <p className="text-gray-600 mb-4">Create your first creative to get started!</p>
+                            <Link
+                                href="/app/builder"
+                                className="inline-block px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+                            >
+                                Create Now
+                            </Link>
+                        </div>
+                    ) : (
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {creatives.slice(0, 6).map((creative) => (
+                                <Link
+                                    key={creative._id}
+                                    href={`/app/builder?id=${creative._id}`}
+                                    className="bg-white rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow border border-gray-200 hover:border-primary-500"
+                                >
+                                    <div className="flex items-start justify-between mb-3">
+                                        <h4 className="font-semibold text-gray-900 truncate flex-1">
+                                            {creative.name || 'Untitled'}
+                                        </h4>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                                        <Clock className="w-3 h-3" />
+                                        <span>{formatDate(creative._creationTime)}</span>
+                                    </div>
+                                    <div className="mt-2 text-xs text-gray-500">
+                                        Format: {creative.format || 'Custom'}
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Getting Started */}

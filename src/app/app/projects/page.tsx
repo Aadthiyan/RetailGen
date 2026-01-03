@@ -15,24 +15,7 @@ interface Project {
 }
 
 export default function ProjectsPage() {
-    const [projects, setProjects] = useState<Project[]>([
-        {
-            id: '1',
-            name: 'Summer 2025 Campaign',
-            description: 'Retail media assets for summer collection launch',
-            createdAt: '2025-12-01',
-            updatedAt: '2025-12-08',
-            itemCount: 12
-        },
-        {
-            id: '2',
-            name: 'Holiday Promotions',
-            description: 'Multi-format holiday season creatives',
-            createdAt: '2025-11-15',
-            updatedAt: '2025-12-05',
-            itemCount: 24
-        }
-    ]);
+    const [projects, setProjects] = useState<Project[]>([]);
 
     const handleDeleteProject = (id: string) => {
         if (confirm('Are you sure you want to delete this project?')) {

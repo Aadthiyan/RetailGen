@@ -20,7 +20,9 @@ export function PropertiesPanel() {
         setColor(newColor.hex);
         if (activeObject && canvas) {
             activeObject.set('fill', newColor.hex);
+            activeObject.setCoords();
             canvas.renderAll();
+            canvas.fire('object:modified', { target: activeObject });
         }
     };
 
@@ -41,6 +43,26 @@ export function PropertiesPanel() {
             </div>
 
             <div className="p-4 space-y-4">
+                {/* Element Name */}
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-700">Element Name</label>
+                    <input
+                        type="text"
+                        value={(activeObject as any).name || ''}
+                        onChange={(e) => {
+                            if (activeObject && canvas) {
+                                (activeObject as any).name = e.target.value;
+                                canvas.fire('object:modified', { target: activeObject });
+                            }
+                        }}
+                        placeholder="e.g., logo, headline, price"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <p className="text-xs text-gray-500">
+                        Name this element (e.g., "logo", "headline") for better compliance checking
+                    </p>
+                </div>
+
                 {/* Color Picker */}
                 <div className="space-y-2">
                     <label className="text-xs font-medium text-gray-700">Fill Color</label>
@@ -65,10 +87,30 @@ export function PropertiesPanel() {
                         <label className="text-xs font-medium text-gray-700">Font Family</label>
                         <select
                             value={activeObject.fontFamily || 'Inter'}
-                            onChange={(e) => {
+                            onChange={async (e) => {
                                 if (activeObject && canvas) {
-                                    activeObject.set('fontFamily', e.target.value);
-                                    canvas.renderAll();
+                                    const newFont = e.target.value;
+                                    console.log('Changing font to:', newFont);
+
+                                    // Wait for font to load before applying
+                                    try {
+                                        await document.fonts.load(`40px "${newFont}"`);
+                                        console.log('Font loaded successfully:', newFont);
+
+                                        activeObject.set('fontFamily', newFont);
+                                        console.log('Font set on object:', activeObject.fontFamily);
+                                        activeObject.setCoords();
+                                        canvas.renderAll();
+                                        canvas.fire('object:modified', { target: activeObject });
+                                        console.log('Canvas rendered');
+                                    } catch (error) {
+                                        console.error('Font loading error:', error);
+                                        // Apply anyway, might work
+                                        activeObject.set('fontFamily', newFont);
+                                        activeObject.setCoords();
+                                        canvas.renderAll();
+                                        canvas.fire('object:modified', { target: activeObject });
+                                    }
                                 }
                             }}
                             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -129,12 +171,60 @@ export function PropertiesPanel() {
                             value={Math.round(activeObject.fontSize || 40)}
                             onChange={(e) => {
                                 if (activeObject && canvas) {
-                                    activeObject.set('fontSize', parseInt(e.target.value));
+                                    const newSize = parseInt(e.target.value);
+                                    activeObject.set('fontSize', newSize);
+                                    activeObject.setCoords(); // Important: recalculate coordinates
                                     canvas.renderAll();
+                                    canvas.fire('object:modified', { target: activeObject }); // Trigger save
                                 }
                             }}
                             className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
+                    </div>
+                )}
+
+                {/* Bold & Italic - Only for text */}
+                {isTextObject && (
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-gray-700">Text Style</label>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => {
+                                    if (activeObject && canvas) {
+                                        const currentWeight = activeObject.fontWeight;
+                                        const newWeight = currentWeight === 'bold' ? 'normal' : 'bold';
+                                        activeObject.set('fontWeight', newWeight);
+                                        activeObject.setCoords();
+                                        canvas.renderAll();
+                                        canvas.fire('object:modified', { target: activeObject });
+                                    }
+                                }}
+                                className={`flex-1 px-3 py-2 text-sm font-bold border rounded transition-colors ${activeObject.fontWeight === 'bold'
+                                    ? 'bg-primary-500 text-white border-primary-600'
+                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                    }`}
+                            >
+                                B
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (activeObject && canvas) {
+                                        const currentStyle = activeObject.fontStyle;
+                                        const newStyle = currentStyle === 'italic' ? 'normal' : 'italic';
+                                        activeObject.set('fontStyle', newStyle);
+                                        activeObject.setCoords();
+                                        canvas.renderAll();
+                                        canvas.fire('object:modified', { target: activeObject });
+                                    }
+                                }}
+                                className={`flex-1 px-3 py-2 text-sm italic border rounded transition-colors ${activeObject.fontStyle === 'italic'
+                                    ? 'bg-primary-500 text-white border-primary-600'
+                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                    }`}
+                            >
+                                I
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -150,7 +240,9 @@ export function PropertiesPanel() {
                         onChange={(e) => {
                             if (activeObject && canvas) {
                                 activeObject.set('opacity', parseFloat(e.target.value));
+                                activeObject.setCoords();
                                 canvas.renderAll();
+                                canvas.fire('object:modified', { target: activeObject });
                             }
                         }}
                         className="w-full"

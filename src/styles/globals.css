@@ -61,3 +61,23 @@
         text-wrap: balance;
     }
 }
+
+/* Preload all fonts for Fabric.js canvas */
+@layer base {
+    /* Force font loading by creating hidden elements with each font */
+    body::after {
+        content: '';
+        position: absolute;
+        left: -9999px;
+        font-family: 'Inter', 'Outfit', 'Montserrat', 'Roboto', 'Poppins', 'Raleway', 
+                     'Open Sans', 'Source Sans 3', 'Ubuntu', 'Playfair Display', 'Lora', 
+                     'Merriweather', 'Bebas Neue', 'Oswald', 'Anton', 'Righteous', 
+                     'Archivo Black', 'Russo One', 'Barlow Condensed', 'Fjalla One', 
+                     'Bangers', 'Dancing Script', 'Pacifico', 'Lobster', 'Permanent Marker';
+    }
+}
+
+/* Ensure canvas text renders with proper fonts */
+canvas {
+    font-family: inherit;
+}

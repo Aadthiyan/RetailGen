@@ -109,10 +109,20 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     loadFromJSON: (json) => {
         const { canvas } = get();
         if (canvas && json) {
-            canvas.loadFromJSON(json, () => {
-                canvas.renderAll();
-                get().updateLayers();
-            });
+            try {
+                // Check if canvas is still valid (not disposed)
+                if (!canvas.getContext()) {
+                    console.warn('Canvas context is null, skipping loadFromJSON');
+                    return;
+                }
+
+                canvas.loadFromJSON(json, () => {
+                    canvas.renderAll();
+                    get().updateLayers();
+                });
+            } catch (error) {
+                console.error('Error loading canvas JSON:', error);
+            }
         }
     },
 

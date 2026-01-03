@@ -4,69 +4,93 @@ import { useBuilderStore } from '../store/builderStore';
 import { AlignLeft, AlignCenter, AlignRight, AlignVerticalJustifyCenter, AlignHorizontalJustifyCenter, AlignVerticalJustifyStart, Grid3x3, Maximize2 } from 'lucide-react';
 
 export function AlignmentTools() {
-    const { canvas, activeObject } = useBuilderStore();
+    const { canvas, activeObject, canvasSize } = useBuilderStore();
 
     const alignLeft = () => {
         if (!activeObject || !canvas) return;
         activeObject.set('left', 0);
+        activeObject.setCoords();
         canvas.renderAll();
+        canvas.fire('object:modified', { target: activeObject });
     };
 
     const alignCenter = () => {
         if (!activeObject || !canvas) return;
-        const centerX = canvas.getWidth() / 2;
+        const centerX = canvasSize.width / 2;
         activeObject.set('left', centerX - (activeObject.getScaledWidth() / 2));
+        activeObject.setCoords();
         canvas.renderAll();
+        canvas.fire('object:modified', { target: activeObject });
     };
 
     const alignRight = () => {
         if (!activeObject || !canvas) return;
-        const right = canvas.getWidth() - activeObject.getScaledWidth();
+        const right = canvasSize.width - activeObject.getScaledWidth();
         activeObject.set('left', right);
+        activeObject.setCoords();
         canvas.renderAll();
+        canvas.fire('object:modified', { target: activeObject });
     };
 
     const alignTop = () => {
         if (!activeObject || !canvas) return;
         activeObject.set('top', 0);
+        activeObject.setCoords();
         canvas.renderAll();
+        canvas.fire('object:modified', { target: activeObject });
     };
 
     const alignMiddle = () => {
         if (!activeObject || !canvas) return;
-        const centerY = canvas.getHeight() / 2;
+        const centerY = canvasSize.height / 2;
         activeObject.set('top', centerY - (activeObject.getScaledHeight() / 2));
+        activeObject.setCoords();
         canvas.renderAll();
+        canvas.fire('object:modified', { target: activeObject });
     };
 
     const alignBottom = () => {
         if (!activeObject || !canvas) return;
-        const bottom = canvas.getHeight() - activeObject.getScaledHeight();
+        const bottom = canvasSize.height - activeObject.getScaledHeight();
         activeObject.set('top', bottom);
+        activeObject.setCoords();
         canvas.renderAll();
+        canvas.fire('object:modified', { target: activeObject });
     };
 
     const centerBoth = () => {
         if (!activeObject || !canvas) return;
-        const centerX = canvas.getWidth() / 2;
-        const centerY = canvas.getHeight() / 2;
+        const centerX = canvasSize.width / 2;
+        const centerY = canvasSize.height / 2;
         activeObject.set({
             left: centerX - (activeObject.getScaledWidth() / 2),
             top: centerY - (activeObject.getScaledHeight() / 2),
         });
+        activeObject.setCoords();
         canvas.renderAll();
+        canvas.fire('object:modified', { target: activeObject });
     };
 
     const fitToCanvas = () => {
-        if (!activeObject || !canvas) return;
-        const canvasWidth = canvas.getWidth();
-        const canvasHeight = canvas.getHeight();
+        if (!activeObject || !canvas) {
+            console.log('Fit to Canvas: No active object or canvas');
+            return;
+        }
+
+        console.log('Fit to Canvas: Starting...');
+        const canvasWidth = canvasSize.width;  // Use actual size from store
+        const canvasHeight = canvasSize.height; // Use actual size from store
         const objWidth = activeObject.width || 1;
         const objHeight = activeObject.height || 1;
+
+        console.log('Canvas size (ACTUAL):', canvasWidth, 'x', canvasHeight);
+        console.log('Object size:', objWidth, 'x', objHeight);
 
         const scaleX = canvasWidth / objWidth;
         const scaleY = canvasHeight / objHeight;
         const scale = Math.min(scaleX, scaleY) * 0.9; // 90% to leave margin
+
+        console.log('Scale X:', scaleX, 'Scale Y:', scaleY, 'Final scale:', scale);
 
         activeObject.set({
             scaleX: scale,
@@ -74,7 +98,15 @@ export function AlignmentTools() {
             left: (canvasWidth - objWidth * scale) / 2,
             top: (canvasHeight - objHeight * scale) / 2,
         });
+
+        console.log('New position:', activeObject.left, activeObject.top);
+        console.log('New scale:', activeObject.scaleX, activeObject.scaleY);
+
+        activeObject.setCoords();
         canvas.renderAll();
+        canvas.fire('object:modified', { target: activeObject });
+
+        console.log('Fit to Canvas: Complete!');
     };
 
     if (!activeObject) {

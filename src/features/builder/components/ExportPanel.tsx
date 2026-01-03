@@ -15,45 +15,8 @@ export function ExportPanel() {
     const [selectedFormats, setSelectedFormats] = useState<string[]>(['fb-feed', 'ig-post']);
     const [isExporting, setIsExporting] = useState(false);
     const [results, setResults] = useState<ExportResult[]>([]);
-    const [showRecommendations, setShowRecommendations] = useState(true);
 
     const logExport = useMutation(api.exports.logExport);
-
-    // Smart recommendations based on canvas aspect ratio
-    const getRecommendedFormats = (): string[] => {
-        if (!canvas) return [];
-
-        const width = canvas.getWidth();
-        const height = canvas.getHeight();
-        const ratio = width / height;
-
-        const recommendations: string[] = [];
-
-        // Square (1:1) - recommend square formats
-        if (Math.abs(ratio - 1) < 0.1) {
-            recommendations.push('fb-feed', 'ig-post');
-        }
-        // Vertical (9:16) - recommend stories
-        else if (ratio < 0.7) {
-            recommendations.push('ig-story', 'fb-story', 'ig-reel', 'tiktok-video');
-        }
-        // Horizontal (16:9) - recommend landscape
-        else if (ratio > 1.5) {
-            recommendations.push('yt-thumbnail', 'tw-post', 'leaderboard');
-        }
-        // Portrait (2:3) - recommend Pinterest
-        else if (ratio < 1 && ratio > 0.6) {
-            recommendations.push('pinterest-pin');
-        }
-        // Landscape (1.91:1) - recommend LinkedIn
-        else if (ratio > 1.8 && ratio < 2) {
-            recommendations.push('li-post');
-        }
-
-        return recommendations;
-    };
-
-    const recommendedFormats = getRecommendedFormats();
 
     const toggleFormat = (id: string) => {
         setSelectedFormats(prev =>
@@ -61,10 +24,6 @@ export function ExportPanel() {
                 ? prev.filter(f => f !== id)
                 : [...prev, id]
         );
-    };
-
-    const selectRecommended = () => {
-        setSelectedFormats(recommendedFormats);
     };
 
     const handleExport = async () => {
@@ -125,33 +84,6 @@ export function ExportPanel() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {/* Smart Recommendations */}
-                {recommendedFormats.length > 0 && showRecommendations && (
-                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-3">
-                        <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                                <ImageIcon className="w-4 h-4 text-blue-600" />
-                                <span className="text-xs font-semibold text-blue-900">Recommended for Your Design</span>
-                            </div>
-                            <button
-                                onClick={() => setShowRecommendations(false)}
-                                className="text-blue-400 hover:text-blue-600"
-                            >
-                                <span className="text-xs">✕</span>
-                            </button>
-                        </div>
-                        <p className="text-xs text-blue-700 mb-2">
-                            Based on your {canvas?.getWidth()}×{canvas?.getHeight()} canvas
-                        </p>
-                        <button
-                            onClick={selectRecommended}
-                            className="w-full px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
-                        >
-                            Select {recommendedFormats.length} Recommended Formats
-                        </button>
-                    </div>
-                )}
-
                 {/* Social Formats */}
                 <div>
                     <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
@@ -163,7 +95,6 @@ export function ExportPanel() {
                                 key={format.id}
                                 format={format}
                                 isSelected={selectedFormats.includes(format.id)}
-                                isRecommended={recommendedFormats.includes(format.id)}
                                 onToggle={() => toggleFormat(format.id)}
                             />
                         ))}
@@ -181,7 +112,6 @@ export function ExportPanel() {
                                 key={format.id}
                                 format={format}
                                 isSelected={selectedFormats.includes(format.id)}
-                                isRecommended={recommendedFormats.includes(format.id)}
                                 onToggle={() => toggleFormat(format.id)}
                             />
                         ))}
@@ -199,7 +129,6 @@ export function ExportPanel() {
                                 key={format.id}
                                 format={format}
                                 isSelected={selectedFormats.includes(format.id)}
-                                isRecommended={recommendedFormats.includes(format.id)}
                                 onToggle={() => toggleFormat(format.id)}
                             />
                         ))}
@@ -249,16 +178,13 @@ export function ExportPanel() {
     );
 }
 
-function FormatCheckbox({ format, isSelected, isRecommended, onToggle }: {
+function FormatCheckbox({ format, isSelected, onToggle }: {
     format: ExportFormat,
     isSelected: boolean,
-    isRecommended?: boolean,
     onToggle: () => void
 }) {
     return (
-        <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'border-primary-500 bg-primary-50' :
-                isRecommended ? 'border-blue-300 bg-blue-50' :
-                    'border-gray-200 hover:border-gray-300'
+        <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-gray-300'
             }`}>
             <div className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-primary-500 border-primary-500' : 'bg-white border-gray-300'
                 }`}>
@@ -276,11 +202,6 @@ function FormatCheckbox({ format, isSelected, isRecommended, onToggle }: {
                         <span className={`text-sm font-medium ${isSelected ? 'text-primary-900' : 'text-gray-900'}`}>
                             {format.name}
                         </span>
-                        {isRecommended && (
-                            <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">
-                                ⭐ Recommended
-                            </span>
-                        )}
                     </div>
                     <span className="text-xs text-gray-400">
                         {format.width}x{format.height}

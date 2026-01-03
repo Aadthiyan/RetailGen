@@ -14,76 +14,47 @@ export async function smartResizeJSON(
     const targetWidth = targetFormat.width;
     const targetHeight = targetFormat.height;
 
+    // Calculate scale factors
     const scaleX = targetWidth / originalWidth;
     const scaleY = targetHeight / originalHeight;
 
-    // "Cover" scale for background (max of scales)
-    const coverScale = Math.max(scaleX, scaleY);
+    // Use uniform scaling to maintain aspect ratio
+    const scale = Math.min(scaleX, scaleY);
 
-    // "Contain" scale for content (min of scales) to ensure it fits
-    const containScale = Math.min(scaleX, scaleY);
+    // Calculate centering offsets if aspect ratios don't match
+    const scaledWidth = originalWidth * scale;
+    const scaledHeight = originalHeight * scale;
+    const offsetX = (targetWidth - scaledWidth) / 2;
+    const offsetY = (targetHeight - scaledHeight) / 2;
 
-    // Process background
+    // Process background image - use cover scaling
     if (json.backgroundImage) {
-        // Reset scale
-        json.backgroundImage.scaleX = (json.backgroundImage.scaleX || 1) * coverScale;
-        json.backgroundImage.scaleY = (json.backgroundImage.scaleY || 1) * coverScale;
+        const bgScale = Math.max(scaleX, scaleY); // Cover instead of contain
+        json.backgroundImage.scaleX = (json.backgroundImage.scaleX || 1) * bgScale;
+        json.backgroundImage.scaleY = (json.backgroundImage.scaleY || 1) * bgScale;
 
-        // Re-center
-        json.backgroundImage.left = targetWidth / 2;
-        json.backgroundImage.top = targetHeight / 2;
-        json.backgroundImage.originX = 'center';
-        json.backgroundImage.originY = 'center';
+        // Center the background
+        const bgWidth = (json.backgroundImage.width || originalWidth) * json.backgroundImage.scaleX;
+        const bgHeight = (json.backgroundImage.height || originalHeight) * json.backgroundImage.scaleY;
+        json.backgroundImage.left = (targetWidth - bgWidth) / 2;
+        json.backgroundImage.top = (targetHeight - bgHeight) / 2;
     }
 
-    // Process objects
+    // Process all objects with proportional scaling
     if (json.objects && Array.isArray(json.objects)) {
         json.objects.forEach((obj: any) => {
-            // Skip if it's a guide or locked element (optional logic)
+            // Scale the object
+            obj.scaleX = (obj.scaleX || 1) * scale;
+            obj.scaleY = (obj.scaleY || 1) * scale;
 
-            // Calculate relative position in original
-            const relX = (obj.left + (obj.width * obj.scaleX * (0.5 - (obj.originX === 'center' ? 0.5 : 0)))) / originalWidth;
-            const relY = (obj.top + (obj.height * obj.scaleY * (0.5 - (obj.originY === 'center' ? 0.5 : 0)))) / originalHeight;
+            // Scale position proportionally and add centering offset
+            obj.left = (obj.left || 0) * scale + offsetX;
+            obj.top = (obj.top || 0) * scale + offsetY;
 
-            // Apply scale
-            // We use a slightly dampened scale for text to avoid it becoming huge on banners
-            // or tiny on skyscrapers. We blend 'containScale' with 1.0 slightly if needed.
-            // For now, straight containScale is usually best for consistency.
-            obj.scaleX = (obj.scaleX || 1) * containScale;
-            obj.scaleY = (obj.scaleY || 1) * containScale;
-
-            // Reposition
-            // We map the relative position to the new dimensions
-            let newLeft = relX * targetWidth;
-            let newTop = relY * targetHeight;
-
-            // Adjust for origin
-            if (obj.originX !== 'center') {
-                newLeft -= (obj.width * obj.scaleX) / 2;
+            // Scale font size for text objects
+            if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
+                obj.fontSize = (obj.fontSize || 12) * scale;
             }
-            if (obj.originY !== 'center') {
-                newTop -= (obj.height * obj.scaleY) / 2;
-            }
-
-            // Safe Zone Enforcement
-            const safeMarginX = targetWidth * targetFormat.safeZone;
-            const safeMarginY = targetHeight * targetFormat.safeZone;
-
-            const objWidth = obj.width * obj.scaleX;
-            const objHeight = obj.height * obj.scaleY;
-
-            // Clamp to safe zone
-            // Left edge
-            if (newLeft < safeMarginX) newLeft = safeMarginX;
-            // Right edge
-            if (newLeft + objWidth > targetWidth - safeMarginX) newLeft = targetWidth - safeMarginX - objWidth;
-            // Top edge
-            if (newTop < safeMarginY) newTop = safeMarginY;
-            // Bottom edge
-            if (newTop + objHeight > targetHeight - safeMarginY) newTop = targetHeight - safeMarginY - objHeight;
-
-            obj.left = newLeft;
-            obj.top = newTop;
         });
     }
 

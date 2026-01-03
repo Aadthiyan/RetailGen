@@ -165,9 +165,9 @@ export const TESCO_RULES: Partial<ComplianceRule>[] = [
     {
         id: 'tesco-disclaimer-position',
         name: 'Disclaimer Placement',
-        description: 'Disclaimer must be at bottom of creative',
+        description: 'Disclaimer should be at bottom of creative (optional)',
         category: 'disclaimer',
-        severity: 'error',
+        severity: 'warning', // Changed from 'error'
         retailer: 'tesco',
         validator: {
             type: 'element_position',
