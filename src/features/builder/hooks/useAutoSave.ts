@@ -11,7 +11,7 @@ export function useAutoSave(intervalMs: number = 30000) {
     const { canvas, creativeId, saveStatus, setSaveStatus } = useBuilderStore();
     const updateCreative = useMutation(api.creatives.update);
     const lastSaveRef = useRef<number>(0);
-    const saveTimeoutRef = useRef<NodeJS.Timeout>();
+    const saveTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
     useEffect(() => {
         if (!canvas || !creativeId) return;
