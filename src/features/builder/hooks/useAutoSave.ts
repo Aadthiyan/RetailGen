@@ -41,11 +41,11 @@ export function useAutoSave(intervalMs: number = 30000) {
                 console.log('✅ Auto-save successful');
 
                 // Clear "saved" status after 2 seconds
-                setTimeout(() => setSaveStatus(null), 2000);
+                setTimeout(() => setSaveStatus('unsaved'), 2000);
             } catch (error) {
                 console.error('❌ Auto-save failed:', error);
                 setSaveStatus('error');
-                setTimeout(() => setSaveStatus(null), 3000);
+                setTimeout(() => setSaveStatus('unsaved'), 3000);
             }
         };
 
