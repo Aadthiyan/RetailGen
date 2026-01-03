@@ -80,6 +80,10 @@ export function BulkGenerationPanel() {
                     await createCreative({
                         name: creative.productName,
                         format: '1080x1080',
+                        dimensions: {
+                            width: 1080,
+                            height: 1080,
+                        },
                         content: creative.canvasJSON,
                     });
                 } catch (error) {
