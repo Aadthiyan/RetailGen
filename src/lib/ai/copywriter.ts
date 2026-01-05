@@ -1,5 +1,6 @@
 /**
- * AI Copywriting Assistant - Generates professional ad copy using GPT-4
+ * AI Copywriting Assistant - Generates professional ad copy using Meta LLaMA-3
+ * Free via Hugging Face Inference API
  */
 
 export interface CopywritingRequest {
@@ -30,12 +31,31 @@ export interface CopywritingResult {
     };
 }
 
+// Available LLaMA models on Hugging Face
+const LLAMA_MODELS = {
+    LLAMA_3_8B: 'meta-llama/Meta-Llama-3-8B-Instruct', // Fast, good quality
+    LLAMA_3_70B: 'meta-llama/Meta-Llama-3-70B-Instruct', // Better quality, slower
+};
+
+// Use 8B for speed, can switch to 70B for better quality
+const DEFAULT_MODEL = LLAMA_MODELS.LLAMA_3_8B;
+
 export class AICopywriter {
     private apiKey: string;
-    private model: string = 'gpt-4';
+    private model: string;
+    private useOpenAI: boolean;
 
     constructor(apiKey?: string) {
-        this.apiKey = apiKey || process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
+        // Check which API to use
+        this.useOpenAI = !!process.env.NEXT_PUBLIC_OPENAI_API_KEY && !process.env.HUGGINGFACE_API_KEY;
+
+        if (this.useOpenAI) {
+            this.apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
+            this.model = 'gpt-4';
+        } else {
+            this.apiKey = apiKey || process.env.HUGGINGFACE_API_KEY || process.env.NEXT_PUBLIC_HUGGINGFACE_API_KEY || '';
+            this.model = DEFAULT_MODEL;
+        }
     }
 
     /**
@@ -45,41 +65,104 @@ export class AICopywriter {
         const prompt = this.buildPrompt(request);
 
         try {
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.apiKey}`,
-                },
-                body: JSON.stringify({
-                    model: this.model,
-                    messages: [
-                        {
-                            role: 'system',
-                            content: 'You are an expert advertising copywriter specializing in retail marketing. You create compelling, conversion-focused copy that follows best practices and brand guidelines.',
-                        },
-                        {
-                            role: 'user',
-                            content: prompt,
-                        },
-                    ],
-                    temperature: 0.8,
-                    max_tokens: 1500,
-                }),
-            });
+            let content: string;
 
-            if (!response.ok) {
-                throw new Error(`OpenAI API error: ${response.statusText}`);
+            if (this.useOpenAI) {
+                content = await this.callOpenAI(prompt);
+            } else {
+                content = await this.callHuggingFace(prompt);
             }
-
-            const data = await response.json();
-            const content = data.choices[0].message.content;
 
             return this.parseCopyResponse(content, request.tone || 'professional');
         } catch (error) {
             console.error('Copywriting generation failed:', error);
             throw error;
         }
+    }
+
+    /**
+     * Call Hugging Face Inference API with LLaMA-3
+     */
+    private async callHuggingFace(prompt: string): Promise<string> {
+        if (!this.apiKey) {
+            throw new Error('Hugging Face API key not found. Set HUGGINGFACE_API_KEY in .env.local');
+        }
+
+        const response = await fetch(
+            `https://api-inference.huggingface.co/models/${this.model}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    inputs: prompt,
+                    parameters: {
+                        max_new_tokens: 1500,
+                        temperature: 0.8,
+                        top_p: 0.9,
+                        do_sample: true,
+                        return_full_text: false,
+                    },
+                }),
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Hugging Face API Error:', errorText);
+
+            if (response.status === 503) {
+                throw new Error('Model is loading, please try again in 30 seconds');
+            }
+
+            throw new Error(`Hugging Face API error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // Handle different response formats
+        if (Array.isArray(data)) {
+            return data[0]?.generated_text || '';
+        }
+
+        return data.generated_text || '';
+    }
+
+    /**
+     * Call OpenAI API (fallback if OpenAI key is set)
+     */
+    private async callOpenAI(prompt: string): Promise<string> {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.apiKey}`,
+            },
+            body: JSON.stringify({
+                model: this.model,
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are an expert advertising copywriter specializing in retail marketing. You create compelling, conversion-focused copy that follows best practices and brand guidelines.',
+                    },
+                    {
+                        role: 'user',
+                        content: prompt,
+                    },
+                ],
+                temperature: 0.8,
+                max_tokens: 1500,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`OpenAI API error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
     }
 
     /**
@@ -104,7 +187,7 @@ Requirements:
 Return ONLY the headlines, one per line, numbered.`;
 
         try {
-            const response = await this.callOpenAI(prompt);
+            const response = await this.callLLM(prompt);
             return this.parseListResponse(response);
         } catch (error) {
             console.error('Headline generation failed:', error);
@@ -132,7 +215,7 @@ Requirements:
 Return ONLY the CTAs, one per line, numbered.`;
 
         try {
-            const response = await this.callOpenAI(prompt);
+            const response = await this.callLLM(prompt);
             return this.parseListResponse(response);
         } catch (error) {
             console.error('CTA generation failed:', error);
@@ -162,7 +245,7 @@ Requirements:
 Return ONLY the body copy versions, separated by "---", numbered.`;
 
         try {
-            const response = await this.callOpenAI(prompt);
+            const response = await this.callLLM(prompt);
             return this.parseBodyCopyResponse(response);
         } catch (error) {
             console.error('Body copy generation failed:', error);
@@ -311,38 +394,14 @@ TAGLINES:
     }
 
     /**
-     * Call OpenAI API
+     * Call the appropriate LLM API (Hugging Face or OpenAI)
      */
-    private async callOpenAI(prompt: string): Promise<string> {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey}`,
-            },
-            body: JSON.stringify({
-                model: this.model,
-                messages: [
-                    {
-                        role: 'system',
-                        content: 'You are an expert advertising copywriter. Provide only the requested content without additional commentary.',
-                    },
-                    {
-                        role: 'user',
-                        content: prompt,
-                    },
-                ],
-                temperature: 0.8,
-                max_tokens: 1000,
-            }),
-        });
-
-        if (!response.ok) {
-            throw new Error(`OpenAI API error: ${response.statusText}`);
+    private async callLLM(prompt: string): Promise<string> {
+        if (this.useOpenAI) {
+            return this.callOpenAI(prompt);
+        } else {
+            return this.callHuggingFace(prompt);
         }
-
-        const data = await response.json();
-        return data.choices[0].message.content;
     }
 }
 
