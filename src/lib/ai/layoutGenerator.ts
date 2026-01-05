@@ -1,12 +1,17 @@
 // Switch between AI providers based on environment variable
-// Set AI_PROVIDER=openai in .env.local to use OpenAI (requires billing)
-// Default is pollinations (free, no API key needed)
-const AI_PROVIDER = process.env.AI_PROVIDER || 'pollinations';
+// Set AI_PROVIDER in .env.local:
+// - 'huggingface' (recommended) - Free Stable Diffusion SDXL via Hugging Face
+// - 'openai' - DALL-E 3 (requires billing)
+// - 'pollinations' - Free but limited to 1 image at a time
+const AI_PROVIDER = process.env.NEXT_PUBLIC_AI_PROVIDER || process.env.AI_PROVIDER || 'huggingface';
 
 // Dynamic import based on provider
 const getImageGenerator = async () => {
     if (AI_PROVIDER === 'openai') {
         const { generateImage } = await import('./openaiClient');
+        return generateImage;
+    } else if (AI_PROVIDER === 'huggingface') {
+        const { generateImage } = await import('./huggingfaceClient');
         return generateImage;
     } else {
         const { generateImage } = await import('./pollinationsClient');
