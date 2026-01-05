@@ -42,7 +42,7 @@ export default function Home() {
                             {isSignedIn ? 'Go to Dashboard' : 'Start Creating Free'}
                         </button>
                         <button
-                            onClick={() => window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank')}
+                            onClick={() => window.open('https://www.youtube.com/watch?v=UBXfeOrOXcg', '_blank')}
                             className="px-8 py-4 border-2 border-primary-600 text-primary-600 rounded-lg font-semibold hover:bg-primary-50 transition-colors"
                         >
                             Watch Demo
