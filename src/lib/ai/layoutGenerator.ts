@@ -98,17 +98,18 @@ function buildLayoutPrompt(params: LayoutGenerationParams): string {
 
     const formatContext = getFormatContext(format.name);
 
-    const prompt = `
-Professional advertising layout for ${productName}.
-${styleDescriptors[style as keyof typeof styleDescriptors]}.
-${colorInstruction}.
-${formatContext}
-${additionalContext || ''}
-High quality, commercial photography style, product-focused composition.
-No text, clean background, professional lighting.
-  `.trim().replace(/\s+/g, ' ');
+    // Build a clean, direct prompt that respects what the user typed
+    let prompt = `${productName}, ${styleDescriptors[style as keyof typeof styleDescriptors]}, ${colorInstruction}`;
 
-    return prompt;
+    // Add additional context if provided
+    if (additionalContext) {
+        prompt += `, ${additionalContext}`;
+    }
+
+    // Add quality modifiers
+    prompt += ', high quality, professional photography, beautiful lighting, 4K, detailed';
+
+    return prompt.trim();
 }
 
 /**

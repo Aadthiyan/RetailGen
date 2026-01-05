@@ -56,7 +56,7 @@ export async function generateImage(
     const generateSingleImage = async (currentSeed: number): Promise<string> => {
         try {
             const response = await fetch(
-                `https://api-inference.huggingface.co/models/${model}`,
+                `https://router.huggingface.co/hf-inference/models/${model}`,
                 {
                     method: 'POST',
                     headers: {

@@ -64,14 +64,19 @@ export function GenerationPanel({ creativeId }: GenerationPanelProps) {
 
         try {
             const fabricModule = await import('fabric');
-            const Image = fabricModule.fabric.Image;
+            const FabricImage = fabricModule.fabric.Image;
 
             // Load the generated image onto the canvas
-            Image.fromURL(result.imageUrl, (img: any) => {
+            FabricImage.fromURL(result.imageUrl, (img: any) => {
+                if (!img || !img.width || !img.height) {
+                    console.error('Failed to load image or image has no dimensions');
+                    return;
+                }
+
                 // Scale to fit canvas
                 const scale = Math.min(
-                    currentFormat.width / (img.width || 1),
-                    currentFormat.height / (img.height || 1)
+                    currentFormat.width / img.width,
+                    currentFormat.height / img.height
                 );
 
                 img.set({
@@ -82,6 +87,7 @@ export function GenerationPanel({ creativeId }: GenerationPanelProps) {
                 });
 
                 addObject(img);
+                canvas.renderAll();
             }, { crossOrigin: 'anonymous' });
         } catch (err) {
             console.error('Failed to add image to canvas:', err);
