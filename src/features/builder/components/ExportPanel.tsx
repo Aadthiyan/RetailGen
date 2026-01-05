@@ -11,7 +11,7 @@ import { api } from '../../../../convex/_generated/api';
 import { ExportHistory } from './ExportHistory';
 
 export function ExportPanel() {
-    const { canvas, creativeId } = useBuilderStore();
+    const { canvas, creativeId, canvasSize } = useBuilderStore();
     const [selectedFormats, setSelectedFormats] = useState<string[]>(['fb-feed', 'ig-post']);
     const [isExporting, setIsExporting] = useState(false);
     const [results, setResults] = useState<ExportResult[]>([]);
@@ -37,8 +37,9 @@ export function ExportPanel() {
             const formatsToExport = allFormats.filter(f => selectedFormats.includes(f.id));
 
             const originalJson = canvas.toJSON();
-            const originalWidth = canvas.getWidth();
-            const originalHeight = canvas.getHeight();
+            // Use canvasSize from store, not canvas.getWidth() which is scaled by zoom
+            const originalWidth = canvasSize.width;
+            const originalHeight = canvasSize.height;
 
             const exportResults = await exportManager.generateExports(
                 originalJson,

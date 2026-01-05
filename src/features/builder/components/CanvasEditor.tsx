@@ -11,10 +11,37 @@ interface CanvasEditorProps {
 export function CanvasEditor({ className }: CanvasEditorProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const { setCanvas, setActiveObject, updateLayers, canvasSize, currentFormat, setSaveStatus } = useBuilderStore();
+    const fabricInstanceRef = useRef<any>(null); // Track canvas instance across re-renders
+    const { canvas: storeCanvas, setCanvas, setActiveObject, updateLayers, canvasSize, currentFormat, setSaveStatus } = useBuilderStore();
 
     useEffect(() => {
         if (!canvasRef.current || !containerRef.current) return;
+
+        // Skip if canvas already exists in store or ref
+        if (storeCanvas && storeCanvas.getContext) {
+            try {
+                const ctx = storeCanvas.getContext();
+                if (ctx) {
+                    console.log("📏 Canvas exists in store, skipping re-creation");
+                    fabricInstanceRef.current = storeCanvas;
+                    return;
+                }
+            } catch (e) {
+                // Canvas is disposed, continue to create new one
+            }
+        }
+
+        if (fabricInstanceRef.current) {
+            try {
+                const ctx = fabricInstanceRef.current.getContext();
+                if (ctx) {
+                    console.log("📏 Canvas exists in ref, skipping re-creation");
+                    return;
+                }
+            } catch (e) {
+                // Canvas is disposed, continue to create new one
+            }
+        }
 
         // Ref to track if the effect is active (prevent race conditions)
         let isMounted = true;
@@ -53,6 +80,7 @@ export function CanvasEditor({ className }: CanvasEditorProps) {
 
                 // Set initial canvas in store
                 setCanvas(canvasInstance);
+                fabricInstanceRef.current = canvasInstance; // Store reference
 
                 // Render Safe Zone if exists
                 if (currentFormat.safeZone) {
@@ -100,10 +128,18 @@ export function CanvasEditor({ className }: CanvasEditorProps) {
                 const resizeCanvas = () => {
                     if (!containerRef.current) return;
                     if (!canvasInstance) return;
+                    if (!isMounted) return;
+
+                    // Check if canvas is still valid (not disposed)
+                    try {
+                        const ctx = canvasInstance.getContext();
+                        if (!ctx) return;
+                    } catch {
+                        return; // Canvas is disposed
+                    }
 
                     // Additional safety check
                     if (!canvasInstance.setZoom || !canvasInstance.setWidth || !canvasInstance.setHeight) {
-                        console.warn('Canvas instance not fully initialized');
                         return;
                     }
 
@@ -125,7 +161,7 @@ export function CanvasEditor({ className }: CanvasEditorProps) {
                         canvasInstance.setHeight(canvasSize.height * zoom);
                         canvasInstance.renderAll();
                     } catch (error) {
-                        console.error('Error resizing canvas:', error);
+                        // Silently ignore resize errors on disposed canvas
                     }
                 };
 
@@ -143,23 +179,20 @@ export function CanvasEditor({ className }: CanvasEditorProps) {
         return () => {
             isMounted = false;
 
-            // Remove resize listener properly
-            const resizeHandler = () => { };
-            window.removeEventListener('resize', resizeHandler);
-
             if (canvasInstance) {
-                console.log("🧹 Disposing Fabric canvas");
                 try {
-                    // Clear all objects before disposing to prevent image loading errors
-                    canvasInstance.clear();
+                    // Don't call clear() - it causes clearRect errors
+                    // Just dispose the canvas directly
                     canvasInstance.dispose();
                 } catch (e) {
-                    console.warn("Error disposing canvas:", e);
+                    // Silently ignore disposal errors
                 }
                 setCanvas(null);
+                fabricInstanceRef.current = null; // Clear reference
             }
         };
-    }, [canvasSize, currentFormat, setCanvas, setActiveObject, updateLayers, setSaveStatus]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canvasSize.width, canvasSize.height, currentFormat.width, currentFormat.height]);
 
     return (
         <div ref={containerRef} className={cn("flex items-center justify-center bg-gray-100 overflow-hidden h-full w-full", className)}>

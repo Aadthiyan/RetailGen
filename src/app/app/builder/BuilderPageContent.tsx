@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Suspense } from 'react';
+import { Suspense, useRef } from 'react';
 
 const CanvasEditor = dynamic(
     () => import('@/features/builder/components/CanvasEditor').then(mod => mod.CanvasEditor),
@@ -65,9 +65,12 @@ function BuilderPageContent() {
 
     const { canvas, creativeId, setCreativeId, loadFromJSON, saveStatus, setFormat, currentFormat } = useBuilderStore();
 
-    // Initialize Store
+    // Ref to track if we've loaded this creative already
+    const loadedCreativeIdRef = useRef<string | null>(null);
+
+    // Initialize Store - only load ONCE per creative ID
     useEffect(() => {
-        if (creative) {
+        if (creative && creative._id !== loadedCreativeIdRef.current) {
             setCreativeId(creative._id);
             if (creative.content && Object.keys(creative.content).length > 0) {
                 loadFromJSON(creative.content);
@@ -75,8 +78,9 @@ function BuilderPageContent() {
             if (creative.format) {
                 setFormat(creative.format);
             }
+            loadedCreativeIdRef.current = creative._id; // Mark as loaded
         }
-    }, [creative, setCreativeId, loadFromJSON, setFormat]);
+    }, [creative?._id, setCreativeId, loadFromJSON, setFormat]);
 
     // Auto-create creative when user starts working without one
     useEffect(() => {
