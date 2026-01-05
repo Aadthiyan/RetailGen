@@ -7,6 +7,14 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
 [![Status](https://img.shields.io/badge/Status-Production%20Ready-success)](https://github.com)
 
+## 🔗 Quick Links
+
+| 🌐 **Live Demo** | 🎬 **Video Demo** | 📂 **GitHub** |
+|:---:|:---:|:---:|
+| [retail-gen.vercel.app](https://retail-gen.vercel.app/) | [Watch on YouTube](https://www.youtube.com/watch?v=UBXfeOrOXcg) | [Aadthiyan/RetailGen](https://github.com/Aadthiyan/RetailGen) |
+
+---
+
 RetailGen AI transforms retail creative production from hours to minutes. Generate, validate, and export campaign-ready assets across multiple platforms with AI-powered assistance and automated compliance checking.
 
 ---
@@ -101,7 +109,9 @@ Visit `http://localhost:3000` to see the app!
 - **Backend:** Convex (serverless functions + real-time DB)
 - **Auth:** Clerk
 - **Storage:** Cloudinary
-- **AI:** OpenAI GPT-4, Replicate, Google Vision
+- **AI Image Generation:** Hugging Face Stable Diffusion 3
+- **AI Copywriting:** Hugging Face Meta LLaMA-3
+- **Monitoring:** Sentry, PostHog
 
 ### Project Structure
 ```
