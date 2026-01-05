@@ -11,7 +11,7 @@ export function useAutoSave(intervalMs: number = 30000) {
     const { canvas, creativeId, saveStatus, setSaveStatus } = useBuilderStore();
     const updateCreative = useMutation(api.creatives.update);
     const lastSaveRef = useRef<number>(0);
-    const saveTimeoutRef = useRef<NodeJS.Timeout>();
+    const saveTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
     useEffect(() => {
         if (!canvas || !creativeId) return;
@@ -41,11 +41,11 @@ export function useAutoSave(intervalMs: number = 30000) {
                 console.log('✅ Auto-save successful');
 
                 // Clear "saved" status after 2 seconds
-                setTimeout(() => setSaveStatus(null), 2000);
+                setTimeout(() => setSaveStatus('unsaved'), 2000);
             } catch (error) {
                 console.error('❌ Auto-save failed:', error);
                 setSaveStatus('error');
-                setTimeout(() => setSaveStatus(null), 3000);
+                setTimeout(() => setSaveStatus('unsaved'), 3000);
             }
         };
 
