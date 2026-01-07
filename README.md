@@ -294,9 +294,5 @@ All phases complete:
 </p>
 
 <p align="center">
-  <a href="https://retailgen.ai">Website</a> •
-  <a href="./USER_GUIDE.md">Documentation</a> •
-  <a href="./API_DOCUMENTATION.md">API</a> •
-  <a href="https://discord.gg/retailgen">Community</a>
   <a href="https://drive.google.com/file/d/1jEyvGACMKL1OR1dy63Q3P1kozy-TWa6s/view?usp=sharing">Resume</a>
 </p>
